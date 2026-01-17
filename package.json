@@ -3,7 +3,7 @@
   "name": "coolify",
   "title": "Coolify",
   "description": "Coolify Management via Raycast",
-  "icon": "extension-icon.png",
+  "icon": "coolify-logo.png",
   "author": "feliche93",
   "owner": "vemmer",
   "platforms": [
@@ -16,11 +16,29 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "tbd",
-      "title": "Tbd",
-      "subtitle": "tbd",
-      "description": "tbd",
-      "mode": "no-view"
+      "name": "setup",
+      "title": "Coolify Setup",
+      "subtitle": "Connect your Coolify instance",
+      "description": "Configure API base URL and API token",
+      "icon": "coolify-logo.png",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "apiUrl",
+      "title": "Coolify API Base URL",
+      "description": "Defaults to Coolify Cloud. Use https://<your-instance>/api/v1 for self-hosted.",
+      "type": "textfield",
+      "required": false,
+      "default": "https://app.coolify.io/api/v1"
+    },
+    {
+      "name": "apiToken",
+      "title": "Coolify API Token",
+      "description": "Create in Coolify under Keys & Tokens → API tokens.",
+      "type": "password",
+      "required": false
     }
   ],
   "dependencies": {
