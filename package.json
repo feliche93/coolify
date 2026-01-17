@@ -37,6 +37,19 @@
       ]
     },
     {
+      "name": "search-deployments",
+      "title": "Search Deployments",
+      "subtitle": "Active deployments",
+      "description": "List active Coolify deployments",
+      "icon": "coolify-logo.png",
+      "mode": "view",
+      "keywords": [
+        "coolify",
+        "deployments",
+        "deploy"
+      ]
+    },
+    {
       "name": "search-resources",
       "title": "Search Resources",
       "subtitle": "Browse all resources",

@@ -48,11 +48,12 @@ export function flattenEnvironments(projects: Project[]): ProjectEnvironment[] {
 export function buildEnvToProjectMap(envs: ProjectEnvironment[]): Map<string, string> {
   const map = new Map<string, string>();
   for (const env of envs) {
-    const envId = toId(env.id ?? env.uuid);
     const projectId = toId(env.projectId ?? env.project_uuid ?? env.project_id);
-    if (envId && projectId) {
-      map.set(envId, projectId);
-    }
+    if (!projectId) continue;
+    const envId = toId(env.id);
+    const envUuid = toId(env.uuid);
+    if (envId) map.set(envId, projectId);
+    if (envUuid) map.set(envUuid, projectId);
   }
   return map;
 }
@@ -60,10 +61,11 @@ export function buildEnvToProjectMap(envs: ProjectEnvironment[]): Map<string, st
 export function buildEnvNameMap(envs: ProjectEnvironment[]): Map<string, string> {
   const map = new Map<string, string>();
   for (const env of envs) {
-    const envId = toId(env.id ?? env.uuid);
-    if (envId) {
-      map.set(envId, env.name ?? "Unnamed Environment");
-    }
+    const name = env.name ?? "Unnamed Environment";
+    const envId = toId(env.id);
+    const envUuid = toId(env.uuid);
+    if (envId) map.set(envId, name);
+    if (envUuid) map.set(envUuid, name);
   }
   return map;
 }
@@ -71,10 +73,10 @@ export function buildEnvNameMap(envs: ProjectEnvironment[]): Map<string, string>
 export function buildEnvLookup(envs: ProjectEnvironment[]): Map<string, ProjectEnvironment> {
   const map = new Map<string, ProjectEnvironment>();
   for (const env of envs) {
-    const envId = toId(env.id ?? env.uuid);
-    if (envId) {
-      map.set(envId, env);
-    }
+    const envId = toId(env.id);
+    const envUuid = toId(env.uuid);
+    if (envId) map.set(envId, env);
+    if (envUuid) map.set(envUuid, env);
   }
   return map;
 }
@@ -82,11 +84,13 @@ export function buildEnvLookup(envs: ProjectEnvironment[]): Map<string, ProjectE
 export function buildEnvNameToIdsMap(envs: ProjectEnvironment[]): Map<string, Set<string>> {
   const map = new Map<string, Set<string>>();
   for (const env of envs) {
-    const envId = toId(env.id ?? env.uuid);
-    if (!envId) continue;
     const name = env.name ?? "Unnamed Environment";
     const set = map.get(name) ?? new Set<string>();
-    set.add(envId);
+    const envId = toId(env.id);
+    const envUuid = toId(env.uuid);
+    if (envId) set.add(envId);
+    if (envUuid) set.add(envUuid);
+    if (set.size === 0) continue;
     map.set(name, set);
   }
   return map;
