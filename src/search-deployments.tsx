@@ -78,6 +78,22 @@ function buildCoolifyDeploymentUrl({
   return `${base}/project/${projectUuid}/environment/${environmentUuid}/application/${applicationUuid}/deployment/${deploymentUuid}`;
 }
 
+function buildCoolifyLogsUrl({
+  instanceUrl,
+  projectUuid,
+  environmentUuid,
+  applicationUuid,
+}: {
+  instanceUrl: string;
+  projectUuid?: string;
+  environmentUuid?: string;
+  applicationUuid?: string;
+}) {
+  if (!projectUuid || !environmentUuid || !applicationUuid) return undefined;
+  const base = instanceUrl.replace(/\/+$/, "");
+  return `${base}/project/${projectUuid}/environment/${environmentUuid}/application/${applicationUuid}/logs`;
+}
+
 function resolveDeployUrl(url: string | undefined, instanceUrl: string) {
   if (!url) return undefined;
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
@@ -101,6 +117,20 @@ function resolveEnvId(deployment: Deployment, appIdToEnvId: Map<string, string>,
   return direct ?? "";
 }
 
+function resolveAppKey(deployment: Deployment) {
+  return String(deployment.source_app_uuid ?? deployment.application_uuid ?? deployment.application_id ?? "");
+}
+
+function isHttpUrl(url?: string) {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function applyFilter(
   items: Deployment[],
   filterValue: string,
@@ -115,7 +145,8 @@ function applyFilter(
   if (filterValue.startsWith("project:")) {
     const projectId = filterValue.replace("project:", "");
     return items.filter((item) => {
-      const envId = appIdToEnvId.get(String(item.application_id ?? "")) ?? "";
+      const appKey = resolveAppKey(item);
+      const envId = resolveEnvId(item, appIdToEnvId, appKey);
       return envToProjectMap.get(envId) === projectId;
     });
   }
@@ -123,7 +154,11 @@ function applyFilter(
     const envName = filterValue.replace("env:", "");
     const envIds = envNameToIds.get(envName);
     if (!envIds) return [];
-    return items.filter((item) => envIds.has(appIdToEnvId.get(String(item.application_id ?? "")) ?? ""));
+    return items.filter((item) => {
+      const appKey = resolveAppKey(item);
+      const envId = resolveEnvId(item, appIdToEnvId, appKey);
+      return envIds.has(envId);
+    });
   }
   return items;
 }
@@ -255,9 +290,7 @@ function DeploymentsList() {
       }
     >
       {(filteredDeployments ?? []).map((deployment) => {
-        const appKey = String(
-          deployment.source_app_uuid ?? deployment.application_uuid ?? deployment.application_id ?? "",
-        );
+        const appKey = resolveAppKey(deployment);
         const appInfo = appIdToApp.get(appKey);
         const envId = resolveEnvId(deployment, appIdToEnvId, appKey);
         const envInfo = envLookup.get(envId);
@@ -276,6 +309,12 @@ function DeploymentsList() {
           environmentUuid: envUuid,
           applicationUuid,
           deploymentUuid: deployment.deployment_uuid ?? "",
+        });
+        const consoleLogsUrl = buildCoolifyLogsUrl({
+          instanceUrl,
+          projectUuid,
+          environmentUuid: envUuid,
+          applicationUuid,
         });
         const deployUrl = resolveDeployUrl(deployment.deployment_url, instanceUrl);
         const logsUrl = resolveLogsUrl(deployment.logs, instanceUrl);
@@ -319,13 +358,23 @@ function DeploymentsList() {
                       coolifyUrl={deploymentUrl}
                       deployUrl={deployUrl}
                       logsUrl={logsUrl}
+                      consoleLogsUrl={consoleLogsUrl}
                     />
                   }
                 />
-                {deployUrl ? <Action.OpenInBrowser title="Open Deploy URL" url={deployUrl} /> : null}
-                <Action.OpenInBrowser title="Open in Coolify" url={deploymentUrl ?? applicationUrl} />
-                <Action.OpenInBrowser title="Redeploy in Coolify" url={applicationUrl} />
-                {logsUrl ? <Action.OpenInBrowser title="Open Logs" url={logsUrl} /> : null}
+                {isHttpUrl(deployUrl) ? <Action.OpenInBrowser title="Open Deploy URL" url={deployUrl!} /> : null}
+                {isHttpUrl(deploymentUrl) ? (
+                  <Action.OpenInBrowser title="Open in Coolify" url={deploymentUrl!} />
+                ) : isHttpUrl(applicationUrl) ? (
+                  <Action.OpenInBrowser title="Open in Coolify" url={applicationUrl} />
+                ) : null}
+                {isHttpUrl(applicationUrl) ? (
+                  <Action.OpenInBrowser title="Redeploy in Coolify" url={applicationUrl} />
+                ) : null}
+                {isHttpUrl(consoleLogsUrl) ? (
+                  <Action.OpenInBrowser title="Open Console Logs" url={consoleLogsUrl!} />
+                ) : null}
+                {isHttpUrl(logsUrl) ? <Action.OpenInBrowser title="Open Logs" url={logsUrl!} /> : null}
                 {deployment.deployment_uuid ? (
                   <Action.CopyToClipboard title="Copy Deployment UUID" content={deployment.deployment_uuid} />
                 ) : null}
@@ -356,6 +405,7 @@ function DeploymentDetails({
   coolifyUrl,
   deployUrl,
   logsUrl,
+  consoleLogsUrl,
 }: {
   deployment: Deployment;
   appName: string;
@@ -364,6 +414,7 @@ function DeploymentDetails({
   coolifyUrl?: string;
   deployUrl?: string;
   logsUrl?: string;
+  consoleLogsUrl?: string;
 }) {
   const title = deployment.commit_message ?? deployment.commit ?? "Deployment";
   const createdAt = deployment.created_at ? new Date(deployment.created_at) : undefined;
@@ -392,16 +443,24 @@ function DeploymentDetails({
           ) : null}
           {createdAt ? <Detail.Metadata.Label title="Created" text={createdAt.toLocaleString()} /> : null}
           {updatedAt ? <Detail.Metadata.Label title="Updated" text={updatedAt.toLocaleString()} /> : null}
-          {deployUrl ? <Detail.Metadata.Link title="Deploy URL" text={deployUrl} target={deployUrl} /> : null}
-          {coolifyUrl ? <Detail.Metadata.Link title="Coolify" text="Open Deployment" target={coolifyUrl} /> : null}
-          {logsUrl ? <Detail.Metadata.Link title="Logs" text="Open Logs" target={logsUrl} /> : null}
+          {isHttpUrl(deployUrl) ? (
+            <Detail.Metadata.Link title="Deploy URL" text={deployUrl} target={deployUrl!} />
+          ) : null}
+          {isHttpUrl(coolifyUrl) ? (
+            <Detail.Metadata.Link title="Coolify" text="Open Deployment" target={coolifyUrl!} />
+          ) : null}
+          {isHttpUrl(consoleLogsUrl) ? (
+            <Detail.Metadata.Link title="Console Logs" text="Open Logs" target={consoleLogsUrl!} />
+          ) : null}
+          {isHttpUrl(logsUrl) ? <Detail.Metadata.Link title="Logs" text="Open Logs" target={logsUrl!} /> : null}
         </Detail.Metadata>
       }
       actions={
         <ActionPanel>
-          {deployUrl ? <Action.OpenInBrowser title="Open Deploy URL" url={deployUrl} /> : null}
-          {coolifyUrl ? <Action.OpenInBrowser title="Open in Coolify" url={coolifyUrl} /> : null}
-          {logsUrl ? <Action.OpenInBrowser title="Open Logs" url={logsUrl} /> : null}
+          {isHttpUrl(deployUrl) ? <Action.OpenInBrowser title="Open Deploy URL" url={deployUrl!} /> : null}
+          {isHttpUrl(coolifyUrl) ? <Action.OpenInBrowser title="Open in Coolify" url={coolifyUrl!} /> : null}
+          {isHttpUrl(consoleLogsUrl) ? <Action.OpenInBrowser title="Open Console Logs" url={consoleLogsUrl!} /> : null}
+          {isHttpUrl(logsUrl) ? <Action.OpenInBrowser title="Open Logs" url={logsUrl!} /> : null}
         </ActionPanel>
       }
     />
