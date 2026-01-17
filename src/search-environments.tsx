@@ -3,6 +3,7 @@ import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
 import { Project, buildEnvLookup, toId } from "./api/filters";
+import EnvironmentResourcesList from "./components/environment-resources";
 import WithValidToken from "./pages/with-valid-token";
 
 function EnvironmentsList() {
@@ -84,6 +85,21 @@ function EnvironmentsList() {
             subtitle={env.projectName}
             actions={
               <ActionPanel>
+                <Action.Push
+                  title="Show Resources"
+                  icon={Icon.List}
+                  target={
+                    <EnvironmentResourcesList
+                      baseUrl={baseUrl}
+                      token={token}
+                      instanceUrl={instanceUrl}
+                      projectUuid={projectUuid}
+                      environmentId={String(env.id ?? "")}
+                      environmentUuid={env.uuid ? String(env.uuid) : undefined}
+                      environmentName={env.name ?? "Environment"}
+                    />
+                  }
+                />
                 <Action.OpenInBrowser
                   title="Open Environment in Coolify"
                   url={

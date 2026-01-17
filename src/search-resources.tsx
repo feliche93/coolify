@@ -1,4 +1,15 @@
-import { Action, ActionPanel, Icon, List, getPreferenceValues } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  Clipboard,
+  Color,
+  Detail,
+  Icon,
+  List,
+  Toast,
+  getPreferenceValues,
+  showToast,
+} from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
@@ -10,88 +21,8 @@ import {
   buildEnvToProjectMap,
   toId,
 } from "./api/filters";
+import { Application, Database, ResourceItem, ResourceType, Service, buildResources } from "./lib/resources";
 import WithValidToken from "./pages/with-valid-token";
-
-type Application = {
-  id?: number | string;
-  uuid?: string;
-  name?: string;
-  fqdn?: string;
-  git_repository?: string;
-  git_branch?: string;
-  environment_id?: number | string;
-};
-
-type Service = {
-  id?: number | string;
-  uuid?: string;
-  name?: string;
-  description?: string;
-  environment_id?: number | string;
-  service_type?: string;
-};
-
-type Database = {
-  id?: number | string;
-  uuid?: string;
-  name?: string;
-  description?: string;
-  environment_id?: number | string;
-  db_type?: string;
-};
-
-type ResourceType = "application" | "service" | "database";
-
-type ResourceItem = {
-  id: string;
-  type: ResourceType;
-  name: string;
-  subtitle?: string;
-  environmentId?: string;
-  repo?: string;
-  kind?: string;
-  url?: string;
-};
-
-function getPrimaryUrl(app: Application): string | undefined {
-  if (!app.fqdn) return undefined;
-  const raw = app.fqdn.split(",")[0]?.trim();
-  if (!raw) return undefined;
-  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-  return `https://${raw}`;
-}
-
-function buildResources(apps: Application[], services: Service[], databases: Database[]): ResourceItem[] {
-  const appItems: ResourceItem[] = apps.map((app) => ({
-    id: String(app.id ?? app.uuid ?? app.name ?? "app"),
-    type: "application",
-    name: app.name ?? "Unnamed Application",
-    subtitle: [app.git_branch, getPrimaryUrl(app)].filter(Boolean).join(" • "),
-    environmentId: String(app.environment_id ?? ""),
-    repo: app.git_repository,
-    url: getPrimaryUrl(app),
-  }));
-
-  const serviceItems: ResourceItem[] = services.map((service) => ({
-    id: String(service.id ?? service.uuid ?? service.name ?? "service"),
-    type: "service",
-    name: service.name ?? "Unnamed Service",
-    subtitle: service.description,
-    environmentId: String(service.environment_id ?? ""),
-    kind: service.service_type,
-  }));
-
-  const databaseItems: ResourceItem[] = databases.map((database) => ({
-    id: String(database.id ?? database.uuid ?? database.name ?? "db"),
-    type: "database",
-    name: database.name ?? "Unnamed Database",
-    subtitle: database.description,
-    environmentId: String(database.environment_id ?? ""),
-    kind: database.db_type,
-  }));
-
-  return [...appItems, ...serviceItems, ...databaseItems];
-}
 
 function applyFilter(
   items: ResourceItem[],
@@ -260,8 +191,32 @@ function ResourcesList() {
             const envUuid = clientSafe(envInfo?.uuid);
             const environmentUrl =
               projectUuid && envUuid ? `${instanceUrl}/project/${projectUuid}/environment/${envUuid}` : instanceUrl;
+            const resourceUrl = resolveResourceUrl({
+              instanceUrl,
+              projectUuid,
+              environmentUuid: envUuid,
+              resourceUuid: item.uuid,
+              type: item.type,
+            });
+            const consoleLogsUrl =
+              item.type === "application"
+                ? buildConsoleLogsUrl({
+                    instanceUrl,
+                    projectUuid,
+                    environmentUuid: envUuid,
+                    applicationUuid: item.uuid,
+                  })
+                : undefined;
 
             const accessories = [
+              item.type === "application" && item.status
+                ? {
+                    tag: {
+                      value: item.status,
+                      color: Color.Blue,
+                    },
+                  }
+                : null,
               item.type
                 ? {
                     tag: {
@@ -290,9 +245,110 @@ function ResourcesList() {
                 accessories={accessories}
                 actions={
                   <ActionPanel>
-                    {item.url ? <Action.OpenInBrowser title="Open Application" url={item.url} /> : null}
+                    {item.url ? (
+                      <Action.OpenInBrowser title="Open Application" url={item.url} icon={Icon.Link} />
+                    ) : null}
+                    {resourceUrl ? (
+                      <Action.OpenInBrowser title="Open in Coolify" url={resourceUrl} icon={Icon.Globe} />
+                    ) : null}
                     <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} />
+                    {item.uuid ? (
+                      <ActionPanel.Submenu title="Redeploy" icon={Icon.ArrowClockwise}>
+                        <Action
+                          title="Redeploy"
+                          onAction={async () => {
+                            try {
+                              await deployByUuid({ baseUrl, token, uuid: item.uuid as string });
+                              await showToast({ style: Toast.Style.Success, title: "Redeploy triggered" });
+                            } catch (error) {
+                              await showToast({
+                                style: Toast.Style.Failure,
+                                title: "Failed to redeploy",
+                                message: error instanceof Error ? error.message : String(error),
+                              });
+                            }
+                          }}
+                        />
+                        <Action
+                          title="Force Redeploy"
+                          style={Action.Style.Destructive}
+                          onAction={async () => {
+                            try {
+                              await deployByUuid({ baseUrl, token, uuid: item.uuid as string, force: true });
+                              await showToast({ style: Toast.Style.Success, title: "Force redeploy triggered" });
+                            } catch (error) {
+                              await showToast({
+                                style: Toast.Style.Failure,
+                                title: "Failed to force redeploy",
+                                message: error instanceof Error ? error.message : String(error),
+                              });
+                            }
+                          }}
+                        />
+                      </ActionPanel.Submenu>
+                    ) : null}
+                    {item.type === "application" ? (
+                      <ActionPanel.Submenu title="Logs" icon={Icon.Terminal}>
+                        {isHttpUrl(consoleLogsUrl) ? (
+                          <Action.OpenInBrowser title="Open Console Logs" url={consoleLogsUrl!} icon={Icon.Terminal} />
+                        ) : null}
+                        {item.uuid ? (
+                          <Action
+                            title="Copy Logs"
+                            onAction={async () => {
+                              try {
+                                const logs = await fetchApplicationLogs({
+                                  baseUrl,
+                                  token,
+                                  applicationUuid: item.uuid as string,
+                                  lines: 1000,
+                                });
+                                if (!logs) {
+                                  await showToast({ style: Toast.Style.Failure, title: "No logs returned" });
+                                  return;
+                                }
+                                await Clipboard.copy(logs);
+                                await showToast({ style: Toast.Style.Success, title: "Copied logs" });
+                              } catch (error) {
+                                await showToast({
+                                  style: Toast.Style.Failure,
+                                  title: "Failed to fetch logs",
+                                  message: error instanceof Error ? error.message : String(error),
+                                });
+                              }
+                            }}
+                          />
+                        ) : null}
+                        {item.uuid ? (
+                          <Action.Push
+                            title="Show Last 100 Lines"
+                            target={
+                              <LogsDetail
+                                baseUrl={baseUrl}
+                                token={token}
+                                applicationUuid={item.uuid as string}
+                                lines={100}
+                              />
+                            }
+                          />
+                        ) : null}
+                        {item.uuid ? (
+                          <Action.Push
+                            title="Show Last 500 Lines"
+                            target={
+                              <LogsDetail
+                                baseUrl={baseUrl}
+                                token={token}
+                                applicationUuid={item.uuid as string}
+                                lines={500}
+                              />
+                            }
+                          />
+                        ) : null}
+                      </ActionPanel.Submenu>
+                    ) : null}
                     <Action.CopyToClipboard title="Copy Name" content={item.name} />
+                    {item.uuid ? <Action.CopyToClipboard title="Copy UUID" content={item.uuid} /> : null}
                     {item.repo ? <Action.CopyToClipboard title="Copy Repository URL" content={item.repo} /> : null}
                   </ActionPanel>
                 }
@@ -325,6 +381,85 @@ function typeIcon(type: ResourceType) {
     default:
       return Icon.Dot;
   }
+}
+
+function resolveResourceUrl({
+  instanceUrl,
+  projectUuid,
+  environmentUuid,
+  resourceUuid,
+  type,
+}: {
+  instanceUrl: string;
+  projectUuid?: string;
+  environmentUuid?: string;
+  resourceUuid?: string;
+  type: ResourceType;
+}) {
+  if (!projectUuid || !environmentUuid || !resourceUuid) return undefined;
+  const base = instanceUrl.replace(/\/+$/, "");
+  return `${base}/project/${projectUuid}/environment/${environmentUuid}/${type}/${resourceUuid}`;
+}
+
+function isHttpUrl(url?: string) {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function buildConsoleLogsUrl({
+  instanceUrl,
+  projectUuid,
+  environmentUuid,
+  applicationUuid,
+}: {
+  instanceUrl: string;
+  projectUuid?: string;
+  environmentUuid?: string;
+  applicationUuid?: string;
+}) {
+  if (!projectUuid || !environmentUuid || !applicationUuid) return undefined;
+  const base = instanceUrl.replace(/\/+$/, "");
+  return `${base}/project/${projectUuid}/environment/${environmentUuid}/application/${applicationUuid}/logs`;
+}
+
+async function fetchApplicationLogs({
+  baseUrl,
+  token,
+  applicationUuid,
+  lines,
+}: {
+  baseUrl: string;
+  token: string;
+  applicationUuid: string;
+  lines: number;
+}) {
+  const response = await requestJson<{ logs?: string } | string>(
+    `/applications/${applicationUuid}/logs?lines=${lines}`,
+    { baseUrl, token },
+  );
+  if (typeof response === "string") return response;
+  if (response && typeof response === "object" && "logs" in response) return response.logs ?? "";
+  return "";
+}
+
+async function deployByUuid({
+  baseUrl,
+  token,
+  uuid,
+  force,
+}: {
+  baseUrl: string;
+  token: string;
+  uuid: string;
+  force?: boolean;
+}) {
+  const params = force ? "?force=true" : "";
+  await requestJson(`/deploy?uuid=${uuid}${params}`, { baseUrl, token });
 }
 
 function envColor(name: string) {
@@ -368,4 +503,25 @@ export default function Command() {
       <ResourcesList />
     </WithValidToken>
   );
+}
+
+function LogsDetail({
+  baseUrl,
+  token,
+  applicationUuid,
+  lines,
+}: {
+  baseUrl: string;
+  token: string;
+  applicationUuid: string;
+  lines: number;
+}) {
+  const { data, isLoading } = useCachedPromise(
+    async () => fetchApplicationLogs({ baseUrl, token, applicationUuid, lines }),
+    [baseUrl, applicationUuid, lines],
+  );
+
+  const content = data?.trim() ? `\`\`\`\n${data}\n\`\`\`` : "No logs returned.";
+
+  return <Detail isLoading={isLoading} markdown={content} />;
 }

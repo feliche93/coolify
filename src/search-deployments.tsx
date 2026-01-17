@@ -43,6 +43,9 @@ type Deployment = {
   server_name?: string;
   logs?: unknown;
   git_type?: string;
+  git_repository?: string;
+  repo_url?: string;
+  pull_request_url?: string;
   pull_request_id?: number | string;
 };
 
@@ -187,6 +190,14 @@ async function deployByUuid({
 }) {
   const params = force ? "?force=true" : "";
   await requestJson(`/deploy?uuid=${uuid}${params}`, { baseUrl, token });
+}
+
+function resolveRepoUrl(deployment: Deployment) {
+  return deployment.repo_url ?? deployment.git_repository;
+}
+
+function resolvePrUrl(deployment: Deployment) {
+  return deployment.pull_request_url;
 }
 
 function applyFilter(
@@ -376,6 +387,8 @@ function DeploymentsList() {
         });
         const deployUrl = resolveDeployUrl(deployment.deployment_url, instanceUrl);
         const logsUrl = resolveLogsUrl(deployment.logs, instanceUrl);
+        const repoUrl = resolveRepoUrl(deployment);
+        const prUrl = resolvePrUrl(deployment);
         const envName = envNameMap.get(envId) ?? "";
         const status = deployment.status ?? "unknown";
         const branch = appInfo?.git_branch ?? "";
@@ -433,22 +446,45 @@ function DeploymentsList() {
                   <Action.OpenInBrowser title="Open in Coolify" url={applicationUrl} icon={Icon.Globe} />
                 ) : null}
                 {applicationUuid ? (
-                  <Action
-                    title="Redeploy"
-                    icon={Icon.ArrowClockwise}
-                    onAction={async () => {
-                      try {
-                        await deployByUuid({ baseUrl, token, uuid: applicationUuid });
-                        await showToast({ style: Toast.Style.Success, title: "Redeploy triggered" });
-                      } catch (error) {
-                        await showToast({
-                          style: Toast.Style.Failure,
-                          title: "Failed to redeploy",
-                          message: error instanceof Error ? error.message : String(error),
-                        });
-                      }
-                    }}
-                  />
+                  <ActionPanel.Submenu title="Redeploy" icon={Icon.ArrowClockwise}>
+                    <Action
+                      title="Redeploy"
+                      onAction={async () => {
+                        try {
+                          await deployByUuid({ baseUrl, token, uuid: applicationUuid });
+                          await showToast({ style: Toast.Style.Success, title: "Redeploy triggered" });
+                        } catch (error) {
+                          await showToast({
+                            style: Toast.Style.Failure,
+                            title: "Failed to redeploy",
+                            message: error instanceof Error ? error.message : String(error),
+                          });
+                        }
+                      }}
+                    />
+                    <Action
+                      title="Force Redeploy"
+                      style={Action.Style.Destructive}
+                      onAction={async () => {
+                        try {
+                          await deployByUuid({ baseUrl, token, uuid: applicationUuid, force: true });
+                          await showToast({ style: Toast.Style.Success, title: "Force redeploy triggered" });
+                        } catch (error) {
+                          await showToast({
+                            style: Toast.Style.Failure,
+                            title: "Failed to force redeploy",
+                            message: error instanceof Error ? error.message : String(error),
+                          });
+                        }
+                      }}
+                    />
+                  </ActionPanel.Submenu>
+                ) : null}
+                {isHttpUrl(repoUrl) ? (
+                  <Action.OpenInBrowser title="Open Repository" url={repoUrl} icon={Icon.SourceCode} />
+                ) : null}
+                {isHttpUrl(prUrl) ? (
+                  <Action.OpenInBrowser title="Open Pull Request" url={prUrl} icon={Icon.Paperclip} />
                 ) : null}
                 {applicationUuid ? (
                   <ActionPanel.Submenu title="Logs" icon={Icon.Terminal}>
@@ -570,6 +606,8 @@ function DeploymentDetails({
   const title = deployment.commit_message ?? deployment.commit ?? "Deployment";
   const createdAt = deployment.created_at ? new Date(deployment.created_at) : undefined;
   const updatedAt = deployment.updated_at ? new Date(deployment.updated_at) : undefined;
+  const repoUrl = resolveRepoUrl(deployment);
+  const prUrl = resolvePrUrl(deployment);
 
   const markdown = `# ${title}\n\n${appName ? `**App:** ${appName}\n\n` : ""}${
     environmentName ? `**Environment:** ${environmentName}\n\n` : ""
@@ -604,6 +642,8 @@ function DeploymentDetails({
             <Detail.Metadata.Link title="Console Logs" text="Open Logs" target={consoleLogsUrl!} />
           ) : null}
           {isHttpUrl(logsUrl) ? <Detail.Metadata.Link title="Logs" text="Open Logs" target={logsUrl!} /> : null}
+          {isHttpUrl(repoUrl) ? <Detail.Metadata.Link title="Repository" text="Open Repo" target={repoUrl} /> : null}
+          {isHttpUrl(prUrl) ? <Detail.Metadata.Link title="Pull Request" text="Open PR" target={prUrl} /> : null}
         </Detail.Metadata>
       }
       actions={
@@ -614,23 +654,46 @@ function DeploymentDetails({
           {isHttpUrl(coolifyUrl) ? (
             <Action.OpenInBrowser title="Open in Coolify" url={coolifyUrl!} icon={Icon.Globe} />
           ) : null}
+          {isHttpUrl(repoUrl) ? (
+            <Action.OpenInBrowser title="Open Repository" url={repoUrl} icon={Icon.SourceCode} />
+          ) : null}
+          {isHttpUrl(prUrl) ? (
+            <Action.OpenInBrowser title="Open Pull Request" url={prUrl} icon={Icon.Paperclip} />
+          ) : null}
           {applicationUuid ? (
-            <Action
-              title="Redeploy"
-              icon={Icon.ArrowClockwise}
-              onAction={async () => {
-                try {
-                  await deployByUuid({ baseUrl, token, uuid: applicationUuid });
-                  await showToast({ style: Toast.Style.Success, title: "Redeploy triggered" });
-                } catch (error) {
-                  await showToast({
-                    style: Toast.Style.Failure,
-                    title: "Failed to redeploy",
-                    message: error instanceof Error ? error.message : String(error),
-                  });
-                }
-              }}
-            />
+            <ActionPanel.Submenu title="Redeploy" icon={Icon.ArrowClockwise}>
+              <Action
+                title="Redeploy"
+                onAction={async () => {
+                  try {
+                    await deployByUuid({ baseUrl, token, uuid: applicationUuid });
+                    await showToast({ style: Toast.Style.Success, title: "Redeploy triggered" });
+                  } catch (error) {
+                    await showToast({
+                      style: Toast.Style.Failure,
+                      title: "Failed to redeploy",
+                      message: error instanceof Error ? error.message : String(error),
+                    });
+                  }
+                }}
+              />
+              <Action
+                title="Force Redeploy"
+                style={Action.Style.Destructive}
+                onAction={async () => {
+                  try {
+                    await deployByUuid({ baseUrl, token, uuid: applicationUuid, force: true });
+                    await showToast({ style: Toast.Style.Success, title: "Force redeploy triggered" });
+                  } catch (error) {
+                    await showToast({
+                      style: Toast.Style.Failure,
+                      title: "Failed to force redeploy",
+                      message: error instanceof Error ? error.message : String(error),
+                    });
+                  }
+                }}
+              />
+            </ActionPanel.Submenu>
           ) : null}
           {applicationUuid ? (
             <ActionPanel.Submenu title="Logs" icon={Icon.Terminal}>

@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Icon, List, getPreferenceValues } from "@raycast/api";
+import { Action, ActionPanel, Color, Icon, List, getPreferenceValues } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
@@ -20,6 +20,9 @@ type Application = {
   git_repository?: string;
   git_branch?: string;
   environment_id?: number | string;
+  status?: string;
+  deployment_status?: string;
+  last_deployment_status?: string;
 };
 
 function getPrimaryUrl(app: Application): string | undefined {
@@ -28,6 +31,21 @@ function getPrimaryUrl(app: Application): string | undefined {
   if (!raw) return undefined;
   if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
   return `https://${raw}`;
+}
+
+function statusTag(app: Application) {
+  const raw = (app.status ?? app.deployment_status ?? app.last_deployment_status ?? "").toLowerCase();
+  if (!raw) return null;
+  if (raw.includes("fail") || raw.includes("error")) {
+    return { value: "failed", color: Color.Red };
+  }
+  if (raw.includes("running") || raw.includes("ready") || raw.includes("success")) {
+    return { value: "ready", color: Color.Green };
+  }
+  if (raw.includes("queue") || raw.includes("pending") || raw.includes("building")) {
+    return { value: "queued", color: Color.Yellow };
+  }
+  return { value: raw, color: Color.SecondaryText };
 }
 
 function applyFilter(
@@ -146,10 +164,19 @@ function ApplicationsList() {
         const envUuid = envInfo?.uuid;
         const environmentUrl =
           projectUuid && envUuid ? `${instanceUrl}/project/${projectUuid}/environment/${envUuid}` : instanceUrl;
+        const status = statusTag(app);
         const accessories = [
+          status
+            ? {
+                tag: {
+                  value: status.value,
+                  color: status.color,
+                },
+              }
+            : null,
           environmentName ? { text: environmentName } : null,
           accessoryTitle ? { text: accessoryTitle } : null,
-        ].filter(Boolean) as { text: string }[];
+        ].filter(Boolean) as { text?: string; tag?: { value: string; color: Color } }[];
 
         return (
           <List.Item
