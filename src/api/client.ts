@@ -21,17 +21,24 @@ export async function requestJson<T>(
   {
     baseUrl,
     token,
+    method,
+    body,
     signal,
   }: {
     baseUrl: string;
     token: string;
+    method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+    body?: unknown;
     signal?: AbortSignal;
   },
 ): Promise<T> {
   const response = await fetch(`${baseUrl}${path}`, {
+    method,
     headers: {
       Authorization: `Bearer ${token}`,
+      ...(body ? { "Content-Type": "application/json" } : {}),
     },
+    body: body ? JSON.stringify(body) : undefined,
     signal,
   });
 
