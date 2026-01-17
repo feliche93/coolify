@@ -8,24 +8,12 @@ import {
   openExtensionPreferences,
   showToast,
 } from "@raycast/api";
+import { DEFAULT_BASE_URL, getInstanceUrl, normalizeBaseUrl } from "./api/client";
 
 type Preferences = {
   apiUrl?: string;
   apiToken?: string;
 };
-
-const DEFAULT_BASE_URL = "https://app.coolify.io/api/v1";
-
-function normalizeBaseUrl(input: string): string {
-  const trimmed = input.trim().replace(/\/+$/, "");
-  if (!trimmed) return DEFAULT_BASE_URL;
-  if (trimmed.endsWith("/api/v1")) return trimmed;
-  return `${trimmed}/api/v1`;
-}
-
-function getInstanceUrl(baseUrl: string): string {
-  return baseUrl.replace(/\/api\/v1$/, "");
-}
 
 function getSetupMarkdown(baseUrl: string, hasToken: boolean): string {
   const statusLine = hasToken

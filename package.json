@@ -22,6 +22,85 @@
       "description": "Configure API base URL and API token",
       "icon": "coolify-logo.png",
       "mode": "view"
+    },
+    {
+      "name": "search-applications",
+      "title": "Search Applications",
+      "subtitle": "Browse applications",
+      "description": "List and search Coolify applications",
+      "icon": "coolify-logo.png",
+      "mode": "view",
+      "keywords": [
+        "coolify",
+        "applications",
+        "apps"
+      ]
+    },
+    {
+      "name": "search-resources",
+      "title": "Search Resources",
+      "subtitle": "Browse all resources",
+      "description": "Search applications, services, and databases",
+      "icon": "coolify-logo.png",
+      "mode": "view",
+      "keywords": [
+        "coolify",
+        "resources",
+        "applications",
+        "services",
+        "databases"
+      ]
+    },
+    {
+      "name": "search-projects",
+      "title": "Search Projects",
+      "subtitle": "Browse projects",
+      "description": "List Coolify projects and environments",
+      "icon": "coolify-logo.png",
+      "mode": "view",
+      "keywords": [
+        "coolify",
+        "projects",
+        "environments"
+      ]
+    },
+    {
+      "name": "search-environments",
+      "title": "Search Environments",
+      "subtitle": "Browse environments",
+      "description": "List Coolify environments",
+      "icon": "coolify-logo.png",
+      "mode": "view",
+      "keywords": [
+        "coolify",
+        "environments",
+        "env"
+      ]
+    },
+    {
+      "name": "search-services",
+      "title": "Search Services",
+      "subtitle": "Browse services",
+      "description": "List Coolify services",
+      "icon": "coolify-logo.png",
+      "mode": "view",
+      "keywords": [
+        "coolify",
+        "services"
+      ]
+    },
+    {
+      "name": "search-databases",
+      "title": "Search Databases",
+      "subtitle": "Browse databases",
+      "description": "List Coolify databases",
+      "icon": "coolify-logo.png",
+      "mode": "view",
+      "keywords": [
+        "coolify",
+        "databases",
+        "db"
+      ]
     }
   ],
   "preferences": [
