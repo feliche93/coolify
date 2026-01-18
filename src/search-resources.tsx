@@ -2,7 +2,6 @@ import {
   Action,
   ActionPanel,
   Clipboard,
-  Color,
   Detail,
   Icon,
   List,
@@ -145,7 +144,7 @@ function ResourcesList() {
       isLoading={
         isLoadingProjects || isLoadingEnvironments || isLoadingApplications || isLoadingServices || isLoadingDatabases
       }
-      navigationTitle="Results"
+      navigationTitle="Resources"
       searchBarPlaceholder="Search Resources..."
       onSearchTextChange={setSearchText}
       throttle
@@ -209,14 +208,6 @@ function ResourcesList() {
                 : undefined;
 
             const accessories = [
-              item.type === "application" && item.status
-                ? {
-                    tag: {
-                      value: item.status,
-                      color: Color.Blue,
-                    },
-                  }
-                : null,
               item.type
                 ? {
                     tag: {
@@ -251,105 +242,117 @@ function ResourcesList() {
                     {resourceUrl ? (
                       <Action.OpenInBrowser title="Open in Coolify" url={resourceUrl} icon={Icon.Globe} />
                     ) : null}
-                    <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} />
-                    {item.uuid ? (
-                      <ActionPanel.Submenu title="Redeploy" icon={Icon.ArrowClockwise}>
-                        <Action
-                          title="Redeploy"
-                          onAction={async () => {
-                            try {
-                              await deployByUuid({ baseUrl, token, uuid: item.uuid as string });
-                              await showToast({ style: Toast.Style.Success, title: "Redeploy triggered" });
-                            } catch (error) {
-                              await showToast({
-                                style: Toast.Style.Failure,
-                                title: "Failed to redeploy",
-                                message: error instanceof Error ? error.message : String(error),
-                              });
-                            }
-                          }}
-                        />
-                        <Action
-                          title="Force Redeploy"
-                          style={Action.Style.Destructive}
-                          onAction={async () => {
-                            try {
-                              await deployByUuid({ baseUrl, token, uuid: item.uuid as string, force: true });
-                              await showToast({ style: Toast.Style.Success, title: "Force redeploy triggered" });
-                            } catch (error) {
-                              await showToast({
-                                style: Toast.Style.Failure,
-                                title: "Failed to force redeploy",
-                                message: error instanceof Error ? error.message : String(error),
-                              });
-                            }
-                          }}
-                        />
-                      </ActionPanel.Submenu>
-                    ) : null}
-                    {item.type === "application" ? (
-                      <ActionPanel.Submenu title="Logs" icon={Icon.Terminal}>
-                        {isHttpUrl(consoleLogsUrl) ? (
-                          <Action.OpenInBrowser title="Open Console Logs" url={consoleLogsUrl!} icon={Icon.Terminal} />
-                        ) : null}
-                        {item.uuid ? (
+                    <ActionPanel.Section>
+                      {item.uuid ? (
+                        <ActionPanel.Submenu title="Redeploy" icon={Icon.ArrowClockwise}>
                           <Action
-                            title="Copy Logs"
+                            title="Redeploy"
                             onAction={async () => {
                               try {
-                                const logs = await fetchApplicationLogs({
-                                  baseUrl,
-                                  token,
-                                  applicationUuid: item.uuid as string,
-                                  lines: 1000,
-                                });
-                                if (!logs) {
-                                  await showToast({ style: Toast.Style.Failure, title: "No logs returned" });
-                                  return;
-                                }
-                                await Clipboard.copy(logs);
-                                await showToast({ style: Toast.Style.Success, title: "Copied logs" });
+                                await deployByUuid({ baseUrl, token, uuid: item.uuid as string });
+                                await showToast({ style: Toast.Style.Success, title: "Redeploy triggered" });
                               } catch (error) {
                                 await showToast({
                                   style: Toast.Style.Failure,
-                                  title: "Failed to fetch logs",
+                                  title: "Failed to redeploy",
                                   message: error instanceof Error ? error.message : String(error),
                                 });
                               }
                             }}
                           />
-                        ) : null}
-                        {item.uuid ? (
-                          <Action.Push
-                            title="Show Last 100 Lines"
-                            target={
-                              <LogsDetail
-                                baseUrl={baseUrl}
-                                token={token}
-                                applicationUuid={item.uuid as string}
-                                lines={100}
-                              />
-                            }
+                          <Action
+                            title="Force Redeploy"
+                            style={Action.Style.Destructive}
+                            onAction={async () => {
+                              try {
+                                await deployByUuid({ baseUrl, token, uuid: item.uuid as string, force: true });
+                                await showToast({ style: Toast.Style.Success, title: "Force redeploy triggered" });
+                              } catch (error) {
+                                await showToast({
+                                  style: Toast.Style.Failure,
+                                  title: "Failed to force redeploy",
+                                  message: error instanceof Error ? error.message : String(error),
+                                });
+                              }
+                            }}
                           />
-                        ) : null}
-                        {item.uuid ? (
-                          <Action.Push
-                            title="Show Last 500 Lines"
-                            target={
-                              <LogsDetail
-                                baseUrl={baseUrl}
-                                token={token}
-                                applicationUuid={item.uuid as string}
-                                lines={500}
-                              />
-                            }
-                          />
-                        ) : null}
-                      </ActionPanel.Submenu>
-                    ) : null}
-                    <Action.CopyToClipboard title="Copy Name" content={item.name} />
-                    {item.uuid ? <Action.CopyToClipboard title="Copy UUID" content={item.uuid} /> : null}
-                    {item.repo ? <Action.CopyToClipboard title="Copy Repository URL" content={item.repo} /> : null}
+                        </ActionPanel.Submenu>
+                      ) : null}
+                      {item.type === "application" ? (
+                        <ActionPanel.Submenu title="Logs" icon={Icon.Terminal}>
+                          {isHttpUrl(consoleLogsUrl) ? (
+                            <Action.OpenInBrowser
+                              title="Open Console Logs"
+                              url={consoleLogsUrl!}
+                              icon={Icon.Terminal}
+                            />
+                          ) : null}
+                          {item.uuid ? (
+                            <Action
+                              title="Copy Logs"
+                              onAction={async () => {
+                                try {
+                                  const logs = await fetchApplicationLogs({
+                                    baseUrl,
+                                    token,
+                                    applicationUuid: item.uuid as string,
+                                    lines: 1000,
+                                  });
+                                  if (!logs) {
+                                    await showToast({ style: Toast.Style.Failure, title: "No logs returned" });
+                                    return;
+                                  }
+                                  await Clipboard.copy(logs);
+                                  await showToast({ style: Toast.Style.Success, title: "Copied logs" });
+                                } catch (error) {
+                                  await showToast({
+                                    style: Toast.Style.Failure,
+                                    title: "Failed to fetch logs",
+                                    message: error instanceof Error ? error.message : String(error),
+                                  });
+                                }
+                              }}
+                            />
+                          ) : null}
+                          {item.uuid ? (
+                            <Action.Push
+                              title="Show Last 100 Lines"
+                              target={
+                                <LogsDetail
+                                  baseUrl={baseUrl}
+                                  token={token}
+                                  applicationUuid={item.uuid as string}
+                                  lines={100}
+                                />
+                              }
+                            />
+                          ) : null}
+                          {item.uuid ? (
+                            <Action.Push
+                              title="Show Last 500 Lines"
+                              target={
+                                <LogsDetail
+                                  baseUrl={baseUrl}
+                                  token={token}
+                                  applicationUuid={item.uuid as string}
+                                  lines={500}
+                                />
+                              }
+                            />
+                          ) : null}
+                        </ActionPanel.Submenu>
+                      ) : null}
+                      <Action.OpenInBrowser
+                        title="Open Environment in Coolify"
+                        url={environmentUrl}
+                        icon={Icon.Globe}
+                      />
+                    </ActionPanel.Section>
+                    <ActionPanel.Section>
+                      <Action.CopyToClipboard title="Copy Name" content={item.name} />
+                      {item.uuid ? <Action.CopyToClipboard title="Copy UUID" content={item.uuid} /> : null}
+                      {item.repo ? <Action.CopyToClipboard title="Copy Repository URL" content={item.repo} /> : null}
+                    </ActionPanel.Section>
                   </ActionPanel>
                 }
               />

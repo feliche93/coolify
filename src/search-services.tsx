@@ -88,7 +88,7 @@ function ServicesList() {
   return (
     <List
       isLoading={isLoadingProjects || isLoadingEnvironments || isLoadingServices}
-      navigationTitle="Results"
+      navigationTitle="Services"
       searchBarPlaceholder="Search Services..."
       onSearchTextChange={setSearchText}
       throttle

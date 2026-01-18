@@ -88,7 +88,7 @@ function DatabasesList() {
   return (
     <List
       isLoading={isLoadingProjects || isLoadingEnvironments || isLoadingDatabases}
-      navigationTitle="Results"
+      navigationTitle="Databases"
       searchBarPlaceholder="Search Databases..."
       onSearchTextChange={setSearchText}
       throttle

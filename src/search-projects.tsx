@@ -109,7 +109,7 @@ function ProjectsList() {
   return (
     <List
       isLoading={isLoading}
-      navigationTitle="Results"
+      navigationTitle="Projects"
       searchBarPlaceholder="Search Projects..."
       onSearchTextChange={setSearchText}
       throttle

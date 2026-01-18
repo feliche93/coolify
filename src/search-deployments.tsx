@@ -323,7 +323,7 @@ function DeploymentsList() {
   return (
     <List
       isLoading={isLoadingProjects || isLoadingEnvironments || isLoadingApplications || isLoadingDeployments}
-      navigationTitle="Results"
+      navigationTitle="Deployments"
       searchBarPlaceholder="Search Deployments..."
       onSearchTextChange={setSearchText}
       throttle

@@ -120,7 +120,7 @@ function ApplicationsList() {
   return (
     <List
       isLoading={isLoadingProjects || isLoadingEnvironments || isLoadingApplications}
-      navigationTitle="Results"
+      navigationTitle="Applications"
       searchBarPlaceholder="Search Applications..."
       onSearchTextChange={setSearchText}
       throttle
