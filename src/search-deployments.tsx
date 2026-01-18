@@ -11,7 +11,7 @@ import {
   showToast,
 } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
 import {
   Project,
@@ -256,6 +256,7 @@ function DeploymentsList() {
   const token = apiToken?.trim() ?? "";
   const [filterValue, setFilterValue] = useState("all");
   const [searchText, setSearchText] = useState("");
+  const abortable = useRef<AbortController | null>(null);
 
   const { data: projects, isLoading: isLoadingProjects } = useCachedPromise(
     async () => requestJson<Project[]>("/projects", { baseUrl, token }),
@@ -299,37 +300,65 @@ function DeploymentsList() {
     return map;
   }, [applications]);
 
+  const filteredAppUuids = useMemo(() => {
+    const apps = applications ?? [];
+    if (apps.length === 0) return [] as string[];
+
+    if (filterValue.startsWith("project:")) {
+      const projectId = filterValue.replace("project:", "");
+      const envIds = Array.from(envToProjectMap.entries())
+        .filter(([, pid]) => pid === projectId)
+        .map(([envId]) => envId);
+      const envSet = new Set(envIds);
+      return apps
+        .filter((app) => envSet.has(String(app.environment_id ?? app.environment_uuid ?? "")))
+        .map((app) => app.uuid)
+        .filter(Boolean) as string[];
+    }
+
+    if (filterValue.startsWith("env:")) {
+      const envName = filterValue.replace("env:", "");
+      const envIds = envNameToIds.get(envName);
+      if (!envIds) return [] as string[];
+      return apps
+        .filter((app) => envIds.has(String(app.environment_id ?? app.environment_uuid ?? "")))
+        .map((app) => app.uuid)
+        .filter(Boolean) as string[];
+    }
+
+    // Default: limit to first 20 apps to avoid memory blow-ups
+    return apps
+      .slice(0, 20)
+      .map((app) => app.uuid)
+      .filter(Boolean) as string[];
+  }, [applications, envNameToIds, envToProjectMap, filterValue]);
+
   const {
     data: deployments,
     isLoading: isLoadingDeployments,
     revalidate: revalidateDeployments,
   } = useCachedPromise(
     async () => {
-      const appUuids = (applications ?? []).map((app) => app.uuid).filter(Boolean) as string[];
-      const requests = appUuids.map((uuid) =>
-        requestJson<Deployment[] | { data?: Deployment[]; deployments?: Deployment[] }>(
-          `/deployments/applications/${uuid}?take=20`,
-          { baseUrl, token },
-        ).then((rows) => {
-          const list = Array.isArray(rows) ? rows : (rows?.deployments ?? rows?.data ?? []);
-          return list.map((row) => ({ ...row, source_app_uuid: uuid }));
-        }),
-      );
-      if (!requests.length) return [] as Deployment[];
-      const results = await Promise.all(requests);
-      return results.flat();
-    },
-    [applications?.length ?? 0],
-    { keepPreviousData: true },
-  );
+      const appUuids = filteredAppUuids;
+      if (!appUuids.length) return [] as Deployment[];
 
-  useEffect(() => {
-    if (!applications || applications.length === 0) return;
-    const interval = setInterval(() => {
-      revalidateDeployments();
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [applications?.length ?? 0, revalidateDeployments]);
+      const all: Deployment[] = [];
+      const batchSize = 1;
+      for (let i = 0; i < appUuids.length; i += batchSize) {
+        const uuid = appUuids[i];
+        const rows = await requestJson<Deployment[] | { data?: Deployment[]; deployments?: Deployment[] }>(
+          `/deployments/applications/${uuid}?take=5`,
+          { baseUrl, token, signal: abortable.current?.signal },
+        );
+        const list = Array.isArray(rows) ? rows : (rows?.deployments ?? rows?.data ?? []);
+        all.push(...list.map((row) => ({ ...row, source_app_uuid: uuid })));
+        if (all.length >= 200) break;
+      }
+      return all;
+    },
+    [filteredAppUuids.join("|")],
+    { keepPreviousData: true, abortable },
+  );
 
   const filteredDeployments = useMemo(() => {
     const lower = searchText.trim().toLowerCase();
@@ -352,7 +381,6 @@ function DeploymentsList() {
   return (
     <List
       isLoading={isLoadingProjects || isLoadingEnvironments || isLoadingApplications || isLoadingDeployments}
-      navigationTitle="Deployments"
       searchBarPlaceholder="Search Deployments..."
       onSearchTextChange={setSearchText}
       throttle
@@ -449,6 +477,14 @@ function DeploymentsList() {
             accessories={accessories}
             actions={
               <ActionPanel>
+                <Action
+                  title="Refresh Deployments"
+                  icon={Icon.ArrowClockwise}
+                  onAction={async () => {
+                    if (isLoadingDeployments) return;
+                    await revalidateDeployments();
+                  }}
+                />
                 <Action.Push
                   title="Show Details"
                   icon={Icon.Sidebar}

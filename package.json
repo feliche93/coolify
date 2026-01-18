@@ -5,7 +5,6 @@
   "description": "Coolify Management via Raycast",
   "icon": "coolify-logo.png",
   "author": "feliche93",
-  "owner": "felixvemmer",
   "platforms": [
     "macOS",
     "Windows"
@@ -16,17 +15,9 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "setup",
-      "title": "Coolify Setup",
-      "subtitle": "Connect your Coolify instance",
-      "description": "Configure API base URL and API token",
-      "icon": "coolify-logo.png",
-      "mode": "view"
-    },
-    {
       "name": "search-applications",
       "title": "Search Applications",
-      "subtitle": "Browse applications",
+      "subtitle": "Coolify",
       "description": "List and search Coolify applications",
       "icon": "coolify-logo.png",
       "mode": "view",
@@ -39,7 +30,7 @@
     {
       "name": "search-deployments",
       "title": "Search Deployments",
-      "subtitle": "Active deployments",
+      "subtitle": "Coolify",
       "description": "List active Coolify deployments",
       "icon": "coolify-logo.png",
       "mode": "view",
@@ -52,7 +43,7 @@
     {
       "name": "search-resources",
       "title": "Search Resources",
-      "subtitle": "Browse all resources",
+      "subtitle": "Coolify",
       "description": "Search applications, services, and databases",
       "icon": "coolify-logo.png",
       "mode": "view",
@@ -67,7 +58,7 @@
     {
       "name": "search-projects",
       "title": "Search Projects",
-      "subtitle": "Browse projects",
+      "subtitle": "Coolify",
       "description": "List Coolify projects and environments",
       "icon": "coolify-logo.png",
       "mode": "view",
@@ -80,7 +71,7 @@
     {
       "name": "search-environments",
       "title": "Search Environments",
-      "subtitle": "Browse environments",
+      "subtitle": "Coolify",
       "description": "List Coolify environments",
       "icon": "coolify-logo.png",
       "mode": "view",
@@ -93,7 +84,7 @@
     {
       "name": "search-services",
       "title": "Search Services",
-      "subtitle": "Browse services",
+      "subtitle": "Coolify",
       "description": "List Coolify services",
       "icon": "coolify-logo.png",
       "mode": "view",
@@ -105,7 +96,7 @@
     {
       "name": "search-databases",
       "title": "Search Databases",
-      "subtitle": "Browse databases",
+      "subtitle": "Coolify",
       "description": "List Coolify databases",
       "icon": "coolify-logo.png",
       "mode": "view",
@@ -130,7 +121,7 @@
       "title": "Coolify API Token",
       "description": "Create in Coolify under Keys & Tokens → API tokens.",
       "type": "password",
-      "required": false
+      "required": true
     }
   ],
   "dependencies": {

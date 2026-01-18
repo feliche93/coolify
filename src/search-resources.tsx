@@ -144,7 +144,6 @@ function ResourcesList() {
       isLoading={
         isLoadingProjects || isLoadingEnvironments || isLoadingApplications || isLoadingServices || isLoadingDatabases
       }
-      navigationTitle="Resources"
       searchBarPlaceholder="Search Resources..."
       onSearchTextChange={setSearchText}
       throttle

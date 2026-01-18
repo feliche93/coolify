@@ -107,13 +107,7 @@ function ProjectsList() {
   }, [projects, searchText]);
 
   return (
-    <List
-      isLoading={isLoading}
-      navigationTitle="Projects"
-      searchBarPlaceholder="Search Projects..."
-      onSearchTextChange={setSearchText}
-      throttle
-    >
+    <List isLoading={isLoading} searchBarPlaceholder="Search Projects..." onSearchTextChange={setSearchText} throttle>
       {(filteredProjects ?? []).map((project) => {
         const environments = flattenEnvironments([project]) as ProjectEnvironment[];
         const environmentCount = environments.length;

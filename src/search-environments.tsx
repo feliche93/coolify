@@ -51,7 +51,6 @@ function EnvironmentsList() {
   return (
     <List
       isLoading={isLoading || isLoadingEnvironments}
-      navigationTitle="Environments"
       searchBarPlaceholder="Search Environments..."
       onSearchTextChange={setSearchText}
       throttle
