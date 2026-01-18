@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Icon, List, getPreferenceValues } from "@raycast/api";
+import { Action, ActionPanel, Icon, List, Toast, getPreferenceValues, showToast } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
@@ -11,8 +11,40 @@ type Service = {
   name?: string;
   description?: string;
   environment_id?: number | string;
+  environment_uuid?: string;
   service_type?: string;
 };
+
+function resolveResourceUrl({
+  instanceUrl,
+  projectUuid,
+  environmentUuid,
+  resourceUuid,
+}: {
+  instanceUrl: string;
+  projectUuid?: string;
+  environmentUuid?: string;
+  resourceUuid?: string;
+}) {
+  if (!projectUuid || !environmentUuid || !resourceUuid) return undefined;
+  const base = instanceUrl.replace(/\/+$/, "");
+  return `${base}/project/${projectUuid}/environment/${environmentUuid}/service/${resourceUuid}`;
+}
+
+async function deployByUuid({
+  baseUrl,
+  token,
+  uuid,
+  force,
+}: {
+  baseUrl: string;
+  token: string;
+  uuid: string;
+  force?: boolean;
+}) {
+  const params = force ? "?force=true" : "";
+  await requestJson(`/deploy?uuid=${uuid}${params}`, { baseUrl, token });
+}
 
 function applyFilter(
   items: Service[],
@@ -122,13 +154,19 @@ function ServicesList() {
     >
       {(filteredServices ?? []).map((service) => {
         const title = service.name ?? "Unnamed Service";
-        const envId = String(service.environment_id ?? "");
+        const envId = String(service.environment_id ?? service.environment_uuid ?? "");
         const envInfo = envLookup.get(envId);
         const projectName = envInfo?.projectName ?? "";
         const projectUuid = envInfo?.projectUuid;
         const envUuid = envInfo?.uuid;
         const environmentUrl =
           projectUuid && envUuid ? `${instanceUrl}/project/${projectUuid}/environment/${envUuid}` : instanceUrl;
+        const resourceUrl = resolveResourceUrl({
+          instanceUrl,
+          projectUuid,
+          environmentUuid: envUuid,
+          resourceUuid: service.uuid ? String(service.uuid) : undefined,
+        });
         const accessories = [
           projectName ? { text: projectName } : null,
           service.service_type ? { text: service.service_type } : null,
@@ -142,9 +180,51 @@ function ServicesList() {
             accessories={accessories}
             actions={
               <ActionPanel>
-                <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} />
-                <Action.CopyToClipboard title="Copy Service Name" content={title} />
-                {service.uuid ? <Action.CopyToClipboard title="Copy Service UUID" content={service.uuid} /> : null}
+                {resourceUrl ? (
+                  <Action.OpenInBrowser title="Open in Coolify" url={resourceUrl} icon={Icon.Globe} />
+                ) : null}
+                <ActionPanel.Section>
+                  {service.uuid ? (
+                    <ActionPanel.Submenu title="Redeploy" icon={Icon.ArrowClockwise}>
+                      <Action
+                        title="Redeploy"
+                        onAction={async () => {
+                          try {
+                            await deployByUuid({ baseUrl, token, uuid: String(service.uuid) });
+                            await showToast({ style: Toast.Style.Success, title: "Redeploy triggered" });
+                          } catch (error) {
+                            await showToast({
+                              style: Toast.Style.Failure,
+                              title: "Failed to redeploy",
+                              message: error instanceof Error ? error.message : String(error),
+                            });
+                          }
+                        }}
+                      />
+                      <Action
+                        title="Force Redeploy"
+                        style={Action.Style.Destructive}
+                        onAction={async () => {
+                          try {
+                            await deployByUuid({ baseUrl, token, uuid: String(service.uuid), force: true });
+                            await showToast({ style: Toast.Style.Success, title: "Force redeploy triggered" });
+                          } catch (error) {
+                            await showToast({
+                              style: Toast.Style.Failure,
+                              title: "Failed to force redeploy",
+                              message: error instanceof Error ? error.message : String(error),
+                            });
+                          }
+                        }}
+                      />
+                    </ActionPanel.Submenu>
+                  ) : null}
+                  <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
+                </ActionPanel.Section>
+                <ActionPanel.Section>
+                  <Action.CopyToClipboard title="Copy Service Name" content={title} />
+                  {service.uuid ? <Action.CopyToClipboard title="Copy Service UUID" content={service.uuid} /> : null}
+                </ActionPanel.Section>
               </ActionPanel>
             }
           />

@@ -72,7 +72,7 @@ function statusIcon(status?: string) {
   const value = (status ?? "").toLowerCase();
   if (value === "running") return { source: Icon.Dot, tintColor: Color.Green };
   if (value === "in_progress" || value === "in-progress" || value === "deploying" || value === "building") {
-    return { source: Icon.Dot, tintColor: Color.Yellow };
+    return { source: Icon.Dot, tintColor: Color.Blue };
   }
   if (value === "queued" || value === "pending") return { source: Icon.Dot, tintColor: Color.Yellow };
   if (value === "finished" || value === "success") return { source: Icon.Dot, tintColor: Color.Green };
@@ -324,12 +324,12 @@ function DeploymentsList() {
   );
 
   useEffect(() => {
-    if (filterValue !== "status:active") return;
+    if (!applications || applications.length === 0) return;
     const interval = setInterval(() => {
       revalidateDeployments();
     }, 5000);
     return () => clearInterval(interval);
-  }, [filterValue, revalidateDeployments]);
+  }, [applications?.length ?? 0, revalidateDeployments]);
 
   const filteredDeployments = useMemo(() => {
     const lower = searchText.trim().toLowerCase();
