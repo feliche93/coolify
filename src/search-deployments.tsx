@@ -11,7 +11,7 @@ import {
   showToast,
 } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
 import {
   Project,
@@ -58,14 +58,31 @@ type Application = {
   environment_uuid?: string;
 };
 
-const ACTIVE_STATUSES = new Set(["running", "queued", "pending"]);
+const ACTIVE_STATUSES = new Set([
+  "running",
+  "queued",
+  "pending",
+  "in_progress",
+  "in-progress",
+  "deploying",
+  "building",
+]);
 
 function statusIcon(status?: string) {
   const value = (status ?? "").toLowerCase();
   if (value === "running") return { source: Icon.Dot, tintColor: Color.Green };
+  if (value === "in_progress" || value === "in-progress" || value === "deploying" || value === "building") {
+    return { source: Icon.Dot, tintColor: Color.Yellow };
+  }
   if (value === "queued" || value === "pending") return { source: Icon.Dot, tintColor: Color.Yellow };
+  if (value === "finished" || value === "success") return { source: Icon.Dot, tintColor: Color.Green };
   if (value === "failed") return { source: Icon.Dot, tintColor: Color.Red };
   return { source: Icon.Dot, tintColor: Color.SecondaryText };
+}
+
+function formatStatus(status?: string) {
+  if (!status) return "unknown";
+  return status.replace(/[_-]/g, " ").replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
 function normalizeUrl(url?: string) {
@@ -282,7 +299,11 @@ function DeploymentsList() {
     return map;
   }, [applications]);
 
-  const { data: deployments, isLoading: isLoadingDeployments } = useCachedPromise(
+  const {
+    data: deployments,
+    isLoading: isLoadingDeployments,
+    revalidate: revalidateDeployments,
+  } = useCachedPromise(
     async () => {
       const appUuids = (applications ?? []).map((app) => app.uuid).filter(Boolean) as string[];
       const requests = appUuids.map((uuid) =>
@@ -301,6 +322,14 @@ function DeploymentsList() {
     [applications?.length ?? 0],
     { keepPreviousData: true },
   );
+
+  useEffect(() => {
+    if (filterValue !== "status:active") return;
+    const interval = setInterval(() => {
+      revalidateDeployments();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [filterValue, revalidateDeployments]);
 
   const filteredDeployments = useMemo(() => {
     const lower = searchText.trim().toLowerCase();
@@ -331,7 +360,7 @@ function DeploymentsList() {
         <List.Dropdown tooltip="Filter" onChange={setFilterValue}>
           <List.Dropdown.Item key="all" title="All Deployments" value="all" />
           <List.Dropdown.Section title="Status">
-            <List.Dropdown.Item title="Active (Running/Queued)" value="status:active" />
+            <List.Dropdown.Item title="Active (Running/Queued/In Progress)" value="status:active" />
           </List.Dropdown.Section>
           {projects && projects.length > 0 ? (
             <List.Dropdown.Section title="Projects">
@@ -412,7 +441,9 @@ function DeploymentsList() {
         return (
           <List.Item
             key={String(deployment.deployment_uuid ?? deployment.id ?? deployment.application_name ?? "deployment")}
-            title={deployment.commit_message ?? deployment.commit ?? "No commit message"}
+            title={
+              deployment.commit_message ?? (deployment.commit ? deployment.commit.slice(0, 7) : "No commit message")
+            }
             icon={statusIcon(status)}
             subtitle={deployment.application_name ?? deployment.name ?? appInfo?.name ?? "Application"}
             accessories={accessories}
@@ -618,7 +649,7 @@ function DeploymentDetails({
       markdown={markdown}
       metadata={
         <Detail.Metadata>
-          <Detail.Metadata.Label title="Status" text={deployment.status ?? "unknown"} />
+          <Detail.Metadata.Label title="Status" text={formatStatus(deployment.status)} />
           {appName ? <Detail.Metadata.Label title="Application" text={appName} /> : null}
           {branch ? <Detail.Metadata.Label title="Git Branch" text={branch} /> : null}
           {deployment.commit_message ? (
