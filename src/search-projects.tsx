@@ -72,7 +72,11 @@ function EnvironmentList({
         />
       ))}
       {!isLoading && (environments ?? []).length === 0 ? (
-        <List.EmptyView icon={Icon.MagnifyingGlass} title="No environments found" />
+        <List.EmptyView
+          icon={Icon.MagnifyingGlass}
+          title="No environments found"
+          description="Check API token and permissions."
+        />
       ) : null}
     </List>
   );
@@ -138,7 +142,11 @@ function ProjectsList() {
         );
       })}
       {!isLoading && (filteredProjects ?? []).length === 0 ? (
-        <List.EmptyView icon={Icon.MagnifyingGlass} title="No projects found" />
+        <List.EmptyView
+          icon={Icon.MagnifyingGlass}
+          title="No projects found"
+          description="Check API token and permissions."
+        />
       ) : null}
     </List>
   );

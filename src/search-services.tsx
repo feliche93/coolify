@@ -1,8 +1,9 @@
-import { Action, ActionPanel, Icon, List, Toast, getPreferenceValues, showToast } from "@raycast/api";
+import { Action, ActionPanel, Icon, List, getPreferenceValues } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
 import { Project, buildEnvLookup, buildEnvNameToIdsMap, buildEnvToProjectMap, toId } from "./api/filters";
+import { RedeploySubmenu } from "./components/redeploy-actions";
 import WithValidToken from "./pages/with-valid-token";
 
 type Service = {
@@ -31,20 +32,7 @@ function resolveResourceUrl({
   return `${base}/project/${projectUuid}/environment/${environmentUuid}/service/${resourceUuid}`;
 }
 
-async function deployByUuid({
-  baseUrl,
-  token,
-  uuid,
-  force,
-}: {
-  baseUrl: string;
-  token: string;
-  uuid: string;
-  force?: boolean;
-}) {
-  const params = force ? "?force=true" : "";
-  await requestJson(`/deploy?uuid=${uuid}${params}`, { baseUrl, token });
-}
+// redeploy actions are shared in components
 
 function applyFilter(
   items: Service[],
@@ -184,39 +172,7 @@ function ServicesList() {
                 ) : null}
                 <ActionPanel.Section>
                   {service.uuid ? (
-                    <ActionPanel.Submenu title="Redeploy" icon={Icon.ArrowClockwise}>
-                      <Action
-                        title="Redeploy"
-                        onAction={async () => {
-                          try {
-                            await deployByUuid({ baseUrl, token, uuid: String(service.uuid) });
-                            await showToast({ style: Toast.Style.Success, title: "Redeploy triggered" });
-                          } catch (error) {
-                            await showToast({
-                              style: Toast.Style.Failure,
-                              title: "Failed to redeploy",
-                              message: error instanceof Error ? error.message : String(error),
-                            });
-                          }
-                        }}
-                      />
-                      <Action
-                        title="Force Redeploy"
-                        style={Action.Style.Destructive}
-                        onAction={async () => {
-                          try {
-                            await deployByUuid({ baseUrl, token, uuid: String(service.uuid), force: true });
-                            await showToast({ style: Toast.Style.Success, title: "Force redeploy triggered" });
-                          } catch (error) {
-                            await showToast({
-                              style: Toast.Style.Failure,
-                              title: "Failed to force redeploy",
-                              message: error instanceof Error ? error.message : String(error),
-                            });
-                          }
-                        }}
-                      />
-                    </ActionPanel.Submenu>
+                    <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={String(service.uuid)} />
                   ) : null}
                   <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
                 </ActionPanel.Section>
@@ -230,7 +186,11 @@ function ServicesList() {
         );
       })}
       {!isLoadingServices && (filteredServices ?? []).length === 0 ? (
-        <List.EmptyView icon={Icon.MagnifyingGlass} title="No services found" />
+        <List.EmptyView
+          icon={Icon.MagnifyingGlass}
+          title="No services found"
+          description="Check API token and permissions."
+        />
       ) : null}
     </List>
   );

@@ -1,15 +1,4 @@
-import {
-  Action,
-  ActionPanel,
-  Clipboard,
-  Color,
-  Detail,
-  Icon,
-  List,
-  Toast,
-  getPreferenceValues,
-  showToast,
-} from "@raycast/api";
+import { Action, ActionPanel, Color, Detail, Icon, List, Toast, getPreferenceValues, showToast } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useRef, useState } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
@@ -21,6 +10,8 @@ import {
   buildEnvToProjectMap,
   toId,
 } from "./api/filters";
+import { LogsSubmenu } from "./components/logs-actions";
+import { RedeploySubmenu } from "./components/redeploy-actions";
 import WithValidToken from "./pages/with-valid-token";
 import fromNow from "./utils/time";
 
@@ -162,26 +153,6 @@ function isHttpUrl(url?: string) {
   }
 }
 
-async function fetchApplicationLogs({
-  baseUrl,
-  token,
-  applicationUuid,
-  lines,
-}: {
-  baseUrl: string;
-  token: string;
-  applicationUuid: string;
-  lines: number;
-}) {
-  const response = await requestJson<{ logs?: string } | string>(
-    `/applications/${applicationUuid}/logs?lines=${lines}`,
-    { baseUrl, token },
-  );
-  if (typeof response === "string") return response;
-  if (response && typeof response === "object" && "logs" in response) return response.logs ?? "";
-  return "";
-}
-
 async function cancelDeployment({
   baseUrl,
   token,
@@ -194,20 +165,7 @@ async function cancelDeployment({
   await requestJson(`/deployments/${deploymentUuid}/cancel`, { baseUrl, token, method: "POST" });
 }
 
-async function deployByUuid({
-  baseUrl,
-  token,
-  uuid,
-  force,
-}: {
-  baseUrl: string;
-  token: string;
-  uuid: string;
-  force?: boolean;
-}) {
-  const params = force ? "?force=true" : "";
-  await requestJson(`/deploy?uuid=${uuid}${params}`, { baseUrl, token });
-}
+// redeploy and log actions are shared in components
 
 function resolveRepoUrl(deployment: Deployment) {
   return deployment.repo_url ?? deployment.git_repository;
@@ -512,41 +470,7 @@ function DeploymentsList() {
                 ) : isHttpUrl(applicationUrl) ? (
                   <Action.OpenInBrowser title="Open in Coolify" url={applicationUrl} icon={Icon.Globe} />
                 ) : null}
-                {applicationUuid ? (
-                  <ActionPanel.Submenu title="Redeploy" icon={Icon.ArrowClockwise}>
-                    <Action
-                      title="Redeploy"
-                      onAction={async () => {
-                        try {
-                          await deployByUuid({ baseUrl, token, uuid: applicationUuid });
-                          await showToast({ style: Toast.Style.Success, title: "Redeploy triggered" });
-                        } catch (error) {
-                          await showToast({
-                            style: Toast.Style.Failure,
-                            title: "Failed to redeploy",
-                            message: error instanceof Error ? error.message : String(error),
-                          });
-                        }
-                      }}
-                    />
-                    <Action
-                      title="Force Redeploy"
-                      style={Action.Style.Destructive}
-                      onAction={async () => {
-                        try {
-                          await deployByUuid({ baseUrl, token, uuid: applicationUuid, force: true });
-                          await showToast({ style: Toast.Style.Success, title: "Force redeploy triggered" });
-                        } catch (error) {
-                          await showToast({
-                            style: Toast.Style.Failure,
-                            title: "Failed to force redeploy",
-                            message: error instanceof Error ? error.message : String(error),
-                          });
-                        }
-                      }}
-                    />
-                  </ActionPanel.Submenu>
-                ) : null}
+                {applicationUuid ? <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={applicationUuid} /> : null}
                 {isHttpUrl(repoUrl) ? (
                   <Action.OpenInBrowser title="Open Repository" url={repoUrl} icon={Icon.SourceCode} />
                 ) : null}
@@ -554,51 +478,12 @@ function DeploymentsList() {
                   <Action.OpenInBrowser title="Open Pull Request" url={prUrl} icon={Icon.Paperclip} />
                 ) : null}
                 {applicationUuid ? (
-                  <ActionPanel.Submenu title="Logs" icon={Icon.Terminal}>
-                    {isHttpUrl(consoleLogsUrl) ? (
-                      <Action.OpenInBrowser title="Open Console Logs" url={consoleLogsUrl!} icon={Icon.Terminal} />
-                    ) : null}
-                    {isHttpUrl(logsUrl) ? (
-                      <Action.OpenInBrowser title="Open Logs" url={logsUrl!} icon={Icon.Link} />
-                    ) : null}
-                    <Action
-                      title="Copy Logs"
-                      onAction={async () => {
-                        try {
-                          const logs = await fetchApplicationLogs({
-                            baseUrl,
-                            token,
-                            applicationUuid,
-                            lines: 1000,
-                          });
-                          if (!logs) {
-                            await showToast({ style: Toast.Style.Failure, title: "No logs returned" });
-                            return;
-                          }
-                          await Clipboard.copy(logs);
-                          await showToast({ style: Toast.Style.Success, title: "Copied logs" });
-                        } catch (error) {
-                          await showToast({
-                            style: Toast.Style.Failure,
-                            title: "Failed to fetch logs",
-                            message: error instanceof Error ? error.message : String(error),
-                          });
-                        }
-                      }}
-                    />
-                    <Action.Push
-                      title="Show Last 100 Lines"
-                      target={
-                        <LogsDetail baseUrl={baseUrl} token={token} applicationUuid={applicationUuid} lines={100} />
-                      }
-                    />
-                    <Action.Push
-                      title="Show Last 500 Lines"
-                      target={
-                        <LogsDetail baseUrl={baseUrl} token={token} applicationUuid={applicationUuid} lines={500} />
-                      }
-                    />
-                  </ActionPanel.Submenu>
+                  <LogsSubmenu
+                    baseUrl={baseUrl}
+                    token={token}
+                    applicationUuid={applicationUuid}
+                    consoleLogsUrl={consoleLogsUrl}
+                  />
                 ) : null}
                 {canCancel ? (
                   <Action
@@ -632,7 +517,11 @@ function DeploymentsList() {
         );
       })}
       {!isLoadingDeployments && (filteredDeployments ?? []).length === 0 ? (
-        <List.EmptyView icon={Icon.MagnifyingGlass} title="No deployments found" />
+        <List.EmptyView
+          icon={Icon.MagnifyingGlass}
+          title="No deployments found"
+          description="Check API token and permissions."
+        />
       ) : null}
     </List>
   );
@@ -727,105 +616,17 @@ function DeploymentDetails({
           {isHttpUrl(prUrl) ? (
             <Action.OpenInBrowser title="Open Pull Request" url={prUrl} icon={Icon.Paperclip} />
           ) : null}
+          {applicationUuid ? <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={applicationUuid} /> : null}
           {applicationUuid ? (
-            <ActionPanel.Submenu title="Redeploy" icon={Icon.ArrowClockwise}>
-              <Action
-                title="Redeploy"
-                onAction={async () => {
-                  try {
-                    await deployByUuid({ baseUrl, token, uuid: applicationUuid });
-                    await showToast({ style: Toast.Style.Success, title: "Redeploy triggered" });
-                  } catch (error) {
-                    await showToast({
-                      style: Toast.Style.Failure,
-                      title: "Failed to redeploy",
-                      message: error instanceof Error ? error.message : String(error),
-                    });
-                  }
-                }}
-              />
-              <Action
-                title="Force Redeploy"
-                style={Action.Style.Destructive}
-                onAction={async () => {
-                  try {
-                    await deployByUuid({ baseUrl, token, uuid: applicationUuid, force: true });
-                    await showToast({ style: Toast.Style.Success, title: "Force redeploy triggered" });
-                  } catch (error) {
-                    await showToast({
-                      style: Toast.Style.Failure,
-                      title: "Failed to force redeploy",
-                      message: error instanceof Error ? error.message : String(error),
-                    });
-                  }
-                }}
-              />
-            </ActionPanel.Submenu>
-          ) : null}
-          {applicationUuid ? (
-            <ActionPanel.Submenu title="Logs" icon={Icon.Terminal}>
-              {isHttpUrl(consoleLogsUrl) ? (
-                <Action.OpenInBrowser title="Open Console Logs" url={consoleLogsUrl!} icon={Icon.Terminal} />
-              ) : null}
-              {isHttpUrl(logsUrl) ? <Action.OpenInBrowser title="Open Logs" url={logsUrl!} icon={Icon.Link} /> : null}
-              <Action
-                title="Copy Logs"
-                onAction={async () => {
-                  try {
-                    const logs = await fetchApplicationLogs({
-                      baseUrl,
-                      token,
-                      applicationUuid,
-                      lines: 1000,
-                    });
-                    if (!logs) {
-                      await showToast({ style: Toast.Style.Failure, title: "No logs returned" });
-                      return;
-                    }
-                    await Clipboard.copy(logs);
-                    await showToast({ style: Toast.Style.Success, title: "Copied logs" });
-                  } catch (error) {
-                    await showToast({
-                      style: Toast.Style.Failure,
-                      title: "Failed to fetch logs",
-                      message: error instanceof Error ? error.message : String(error),
-                    });
-                  }
-                }}
-              />
-              <Action.Push
-                title="Show Last 100 Lines"
-                target={<LogsDetail baseUrl={baseUrl} token={token} applicationUuid={applicationUuid} lines={100} />}
-              />
-              <Action.Push
-                title="Show Last 500 Lines"
-                target={<LogsDetail baseUrl={baseUrl} token={token} applicationUuid={applicationUuid} lines={500} />}
-              />
-            </ActionPanel.Submenu>
+            <LogsSubmenu
+              baseUrl={baseUrl}
+              token={token}
+              applicationUuid={applicationUuid}
+              consoleLogsUrl={consoleLogsUrl}
+            />
           ) : null}
         </ActionPanel>
       }
     />
   );
-}
-
-function LogsDetail({
-  baseUrl,
-  token,
-  applicationUuid,
-  lines,
-}: {
-  baseUrl: string;
-  token: string;
-  applicationUuid: string;
-  lines: number;
-}) {
-  const { data, isLoading } = useCachedPromise(
-    async () => fetchApplicationLogs({ baseUrl, token, applicationUuid, lines }),
-    [baseUrl, applicationUuid, lines],
-  );
-
-  const content = data?.trim() ? `\`\`\`\n${data}\n\`\`\`` : "No logs returned.";
-
-  return <Detail isLoading={isLoading} markdown={content} />;
 }
