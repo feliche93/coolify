@@ -462,13 +462,13 @@ function DeploymentsList() {
                     />
                   }
                 />
-                {isHttpUrl(deployUrl) ? (
-                  <Action.OpenInBrowser title="Open Deploy URL" url={deployUrl!} icon={Icon.Link} />
-                ) : null}
                 {isHttpUrl(deploymentUrl) ? (
                   <Action.OpenInBrowser title="Open in Coolify" url={deploymentUrl!} icon={Icon.Globe} />
                 ) : isHttpUrl(applicationUrl) ? (
                   <Action.OpenInBrowser title="Open in Coolify" url={applicationUrl} icon={Icon.Globe} />
+                ) : null}
+                {isHttpUrl(deployUrl) ? (
+                  <Action.OpenInBrowser title="Open Deploy URL" url={deployUrl!} icon={Icon.Link} />
                 ) : null}
                 {applicationUuid ? <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={applicationUuid} /> : null}
                 {isHttpUrl(repoUrl) ? (
@@ -508,9 +508,29 @@ function DeploymentsList() {
                     }}
                   />
                 ) : null}
-                {deployment.deployment_uuid ? (
-                  <Action.CopyToClipboard title="Copy Deployment UUID" content={deployment.deployment_uuid} />
-                ) : null}
+                <ActionPanel.Section>
+                  {isHttpUrl(deployUrl) ? (
+                    <Action.CopyToClipboard title="Copy Deploy URL" content={deployUrl!} />
+                  ) : null}
+                  {isHttpUrl(deploymentUrl) ? (
+                    <Action.CopyToClipboard title="Copy Coolify URL" content={deploymentUrl!} />
+                  ) : isHttpUrl(applicationUrl) ? (
+                    <Action.CopyToClipboard title="Copy Coolify URL" content={applicationUrl} />
+                  ) : null}
+                  {deployment.deployment_uuid ? (
+                    <Action.CopyToClipboard title="Copy Deployment UUID" content={deployment.deployment_uuid} />
+                  ) : null}
+                  {applicationUuid ? (
+                    <Action.CopyToClipboard title="Copy Application UUID" content={applicationUuid} />
+                  ) : null}
+                  {branch ? <Action.CopyToClipboard title="Copy Git Branch" content={branch} /> : null}
+                  {deployment.commit_message ? (
+                    <Action.CopyToClipboard title="Copy Commit Message" content={deployment.commit_message} />
+                  ) : null}
+                  {deployment.commit ? (
+                    <Action.CopyToClipboard title="Copy Commit SHA" content={deployment.commit} />
+                  ) : null}
+                </ActionPanel.Section>
               </ActionPanel>
             }
           />

@@ -1,9 +1,10 @@
-import { Action, ActionPanel, Icon, List, getPreferenceValues } from "@raycast/api";
+import { Action, ActionPanel, Color, Icon, List, getPreferenceValues } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
 import { Project, buildEnvLookup, buildEnvNameToIdsMap, buildEnvToProjectMap, toId } from "./api/filters";
 import { RedeploySubmenu } from "./components/redeploy-actions";
+import { ResourceDetails } from "./components/resource-details";
 import WithValidToken from "./pages/with-valid-token";
 
 type Service = {
@@ -33,6 +34,15 @@ function resolveResourceUrl({
 }
 
 // redeploy actions are shared in components
+
+function envColor(name: string) {
+  const value = name.toLowerCase();
+  if (value.includes("prod")) return Color.Green;
+  if (value.includes("preview")) return Color.Yellow;
+  if (value.includes("stag")) return Color.Orange;
+  if (value.includes("dev")) return Color.Blue;
+  return Color.SecondaryText;
+}
 
 function applyFilter(
   items: Service[],
@@ -144,6 +154,7 @@ function ServicesList() {
         const envId = String(service.environment_id ?? service.environment_uuid ?? "");
         const envInfo = envLookup.get(envId);
         const projectName = envInfo?.projectName ?? "";
+        const environmentName = envInfo?.name ?? "";
         const projectUuid = envInfo?.projectUuid;
         const envUuid = envInfo?.uuid;
         const environmentUrl =
@@ -155,9 +166,23 @@ function ServicesList() {
           resourceUuid: service.uuid ? String(service.uuid) : undefined,
         });
         const accessories = [
-          projectName ? { text: projectName } : null,
+          environmentName
+            ? {
+                tag: {
+                  value: environmentName,
+                  color: envColor(environmentName),
+                },
+              }
+            : null,
+          {
+            tag: {
+              value: "Service",
+              color: Color.Orange,
+            },
+          },
           service.service_type ? { text: service.service_type } : null,
-        ].filter(Boolean) as { text: string }[];
+          projectName ? { text: projectName } : null,
+        ].filter(Boolean) as { text?: string; tag?: { value: string; color: Color } }[];
 
         return (
           <List.Item
@@ -165,19 +190,36 @@ function ServicesList() {
             title={title}
             subtitle={service.description}
             accessories={accessories}
+            detail={
+              <ResourceDetails
+                info={{
+                  title,
+                  type: "Service",
+                  description: service.description,
+                  projectName,
+                  environmentName,
+                  kind: service.service_type,
+                  uuid: service.uuid ? String(service.uuid) : undefined,
+                  coolifyUrl: resourceUrl,
+                  environmentUrl,
+                }}
+              />
+            }
             actions={
               <ActionPanel>
                 {resourceUrl ? (
                   <Action.OpenInBrowser title="Open in Coolify" url={resourceUrl} icon={Icon.Globe} />
                 ) : null}
+                <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
                 <ActionPanel.Section>
                   {service.uuid ? (
                     <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={String(service.uuid)} />
                   ) : null}
-                  <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
                 </ActionPanel.Section>
                 <ActionPanel.Section>
                   <Action.CopyToClipboard title="Copy Service Name" content={title} />
+                  {resourceUrl ? <Action.CopyToClipboard title="Copy Coolify URL" content={resourceUrl} /> : null}
+                  <Action.CopyToClipboard title="Copy Environment URL" content={environmentUrl} />
                   {service.uuid ? <Action.CopyToClipboard title="Copy Service UUID" content={service.uuid} /> : null}
                 </ActionPanel.Section>
               </ActionPanel>

@@ -1,9 +1,10 @@
-import { Action, ActionPanel, Icon, List, getPreferenceValues } from "@raycast/api";
+import { Action, ActionPanel, Color, Icon, List, getPreferenceValues } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
 import { Project, buildEnvLookup, buildEnvNameToIdsMap, buildEnvToProjectMap, toId } from "./api/filters";
 import { RedeploySubmenu } from "./components/redeploy-actions";
+import { ResourceDetails } from "./components/resource-details";
 import WithValidToken from "./pages/with-valid-token";
 
 type Database = {
@@ -33,6 +34,15 @@ function resolveResourceUrl({
 }
 
 // redeploy actions are shared in components
+
+function envColor(name: string) {
+  const value = name.toLowerCase();
+  if (value.includes("prod")) return Color.Green;
+  if (value.includes("preview")) return Color.Yellow;
+  if (value.includes("stag")) return Color.Orange;
+  if (value.includes("dev")) return Color.Blue;
+  return Color.SecondaryText;
+}
 
 function applyFilter(
   items: Database[],
@@ -144,6 +154,7 @@ function DatabasesList() {
         const envId = String(database.environment_id ?? database.environment_uuid ?? "");
         const envInfo = envLookup.get(envId);
         const projectName = envInfo?.projectName ?? "";
+        const environmentName = envInfo?.name ?? "";
         const projectUuid = envInfo?.projectUuid;
         const envUuid = envInfo?.uuid;
         const environmentUrl =
@@ -155,9 +166,23 @@ function DatabasesList() {
           resourceUuid: database.uuid ? String(database.uuid) : undefined,
         });
         const accessories = [
-          projectName ? { text: projectName } : null,
+          environmentName
+            ? {
+                tag: {
+                  value: environmentName,
+                  color: envColor(environmentName),
+                },
+              }
+            : null,
+          {
+            tag: {
+              value: "Database",
+              color: Color.Green,
+            },
+          },
           database.db_type ? { text: database.db_type } : null,
-        ].filter(Boolean) as { text: string }[];
+          projectName ? { text: projectName } : null,
+        ].filter(Boolean) as { text?: string; tag?: { value: string; color: Color } }[];
 
         return (
           <List.Item
@@ -165,19 +190,36 @@ function DatabasesList() {
             title={title}
             subtitle={database.description}
             accessories={accessories}
+            detail={
+              <ResourceDetails
+                info={{
+                  title,
+                  type: "Database",
+                  description: database.description,
+                  projectName,
+                  environmentName,
+                  kind: database.db_type,
+                  uuid: database.uuid ? String(database.uuid) : undefined,
+                  coolifyUrl: resourceUrl,
+                  environmentUrl,
+                }}
+              />
+            }
             actions={
               <ActionPanel>
                 {resourceUrl ? (
                   <Action.OpenInBrowser title="Open in Coolify" url={resourceUrl} icon={Icon.Globe} />
                 ) : null}
+                <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
                 <ActionPanel.Section>
                   {database.uuid ? (
                     <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={String(database.uuid)} />
                   ) : null}
-                  <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
                 </ActionPanel.Section>
                 <ActionPanel.Section>
                   <Action.CopyToClipboard title="Copy Database Name" content={title} />
+                  {resourceUrl ? <Action.CopyToClipboard title="Copy Coolify URL" content={resourceUrl} /> : null}
+                  <Action.CopyToClipboard title="Copy Environment URL" content={environmentUrl} />
                   {database.uuid ? <Action.CopyToClipboard title="Copy Database UUID" content={database.uuid} /> : null}
                 </ActionPanel.Section>
               </ActionPanel>

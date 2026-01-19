@@ -6,6 +6,7 @@ import { toId } from "../api/filters";
 import { Application, Database, ResourceType, Service, buildResources } from "../lib/resources";
 import { buildConsoleLogsUrl, LogsSubmenu } from "./logs-actions";
 import { RedeploySubmenu } from "./redeploy-actions";
+import { ResourceDetails } from "./resource-details";
 
 type EnvironmentResourcesProps = {
   baseUrl: string;
@@ -116,10 +117,15 @@ export default function EnvironmentResourcesList({
                 applicationUuid: item.uuid,
               })
             : undefined;
-        const accessories = [item.kind ? { text: item.kind } : null].filter(Boolean) as {
-          text?: string;
-          tag?: { value: string; color: string };
-        }[];
+        const accessories = [
+          {
+            tag: {
+              value: item.type.charAt(0).toUpperCase() + item.type.slice(1),
+              color: item.type === "application" ? "blue" : item.type === "service" ? "orange" : "green",
+            },
+          },
+          item.kind ? { text: item.kind } : null,
+        ].filter(Boolean) as { text?: string; tag?: { value: string; color: string } }[];
 
         return (
           <List.Item
@@ -128,14 +134,30 @@ export default function EnvironmentResourcesList({
             subtitle={item.subtitle}
             icon={typeIcon(item.type)}
             accessories={accessories}
+            detail={
+              <ResourceDetails
+                info={{
+                  title: item.name,
+                  type: item.type.charAt(0).toUpperCase() + item.type.slice(1),
+                  projectName: undefined,
+                  environmentName,
+                  kind: item.kind,
+                  uuid: item.uuid,
+                  url: item.url,
+                  coolifyUrl: resourceUrl,
+                  environmentUrl,
+                  repoUrl: item.repo,
+                }}
+              />
+            }
             actions={
               <ActionPanel>
-                {item.url ? <Action.OpenInBrowser title="Open Application" url={item.url} icon={Icon.Link} /> : null}
                 {resourceUrl ? (
                   <Action.OpenInBrowser title="Open in Coolify" url={resourceUrl} icon={Icon.Globe} />
                 ) : null}
+                {item.url ? <Action.OpenInBrowser title="Open Application" url={item.url} icon={Icon.Link} /> : null}
+                <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
                 <ActionPanel.Section>
-                  {item.uuid ? <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={String(item.uuid)} /> : null}
                   {item.type === "application" && item.uuid ? (
                     <LogsSubmenu
                       baseUrl={baseUrl}
@@ -144,10 +166,13 @@ export default function EnvironmentResourcesList({
                       consoleLogsUrl={consoleLogsUrl}
                     />
                   ) : null}
-                  <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
+                  {item.uuid ? <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={String(item.uuid)} /> : null}
                 </ActionPanel.Section>
                 <ActionPanel.Section>
                   <Action.CopyToClipboard title="Copy Name" content={item.name} />
+                  {item.url ? <Action.CopyToClipboard title="Copy URL" content={item.url} /> : null}
+                  {resourceUrl ? <Action.CopyToClipboard title="Copy Coolify URL" content={resourceUrl} /> : null}
+                  <Action.CopyToClipboard title="Copy Environment URL" content={environmentUrl} />
                   {item.uuid ? <Action.CopyToClipboard title="Copy UUID" content={item.uuid} /> : null}
                   {item.repo ? <Action.CopyToClipboard title="Copy Repository URL" content={item.repo} /> : null}
                 </ActionPanel.Section>

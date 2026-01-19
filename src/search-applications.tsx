@@ -11,6 +11,7 @@ import {
   toId,
 } from "./api/filters";
 import { buildConsoleLogsUrl, LogsSubmenu } from "./components/logs-actions";
+import { ResourceDetails } from "./components/resource-details";
 import { RedeploySubmenu } from "./components/redeploy-actions";
 import WithValidToken from "./pages/with-valid-token";
 
@@ -67,6 +68,15 @@ function statusTag(app: Application) {
     return { value: "queued", color: Color.Yellow };
   }
   return { value: raw, color: Color.SecondaryText };
+}
+
+function envColor(name: string) {
+  const value = name.toLowerCase();
+  if (value.includes("prod")) return Color.Green;
+  if (value.includes("preview")) return Color.Yellow;
+  if (value.includes("stag")) return Color.Orange;
+  if (value.includes("dev")) return Color.Blue;
+  return Color.SecondaryText;
 }
 
 function applyFilter(
@@ -197,6 +207,14 @@ function ApplicationsList() {
           applicationUuid: app.uuid ? String(app.uuid) : undefined,
         });
         const status = statusTag(app);
+        const envTag = environmentName
+          ? {
+              tag: {
+                value: environmentName,
+                color: envColor(environmentName),
+              },
+            }
+          : null;
         const accessories = [
           status
             ? {
@@ -206,7 +224,7 @@ function ApplicationsList() {
                 },
               }
             : null,
-          environmentName ? { text: environmentName } : null,
+          envTag,
           accessoryTitle ? { text: accessoryTitle } : null,
         ].filter(Boolean) as { text?: string; tag?: { value: string; color: Color } }[];
 
@@ -216,14 +234,31 @@ function ApplicationsList() {
             title={title}
             subtitle={subtitleParts.join(" • ")}
             accessories={accessories}
+            detail={
+              <ResourceDetails
+                info={{
+                  title,
+                  type: "Application",
+                  status: app.status ?? app.deployment_status ?? app.last_deployment_status,
+                  projectName: envInfo?.projectName,
+                  environmentName,
+                  branch: app.git_branch,
+                  uuid: app.uuid ? String(app.uuid) : undefined,
+                  url,
+                  coolifyUrl: resourceUrl,
+                  environmentUrl,
+                  repoUrl: app.git_repository,
+                }}
+              />
+            }
             actions={
               <ActionPanel>
-                {url ? <Action.OpenInBrowser title="Open Application" url={url} icon={Icon.Link} /> : null}
                 {resourceUrl ? (
                   <Action.OpenInBrowser title="Open in Coolify" url={resourceUrl} icon={Icon.Globe} />
                 ) : null}
+                {url ? <Action.OpenInBrowser title="Open Application" url={url} icon={Icon.Link} /> : null}
+                <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
                 <ActionPanel.Section>
-                  {app.uuid ? <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={String(app.uuid)} /> : null}
                   {app.uuid ? (
                     <LogsSubmenu
                       baseUrl={baseUrl}
@@ -232,11 +267,15 @@ function ApplicationsList() {
                       consoleLogsUrl={consoleLogsUrl}
                     />
                   ) : null}
-                  <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
+                  {app.uuid ? <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={String(app.uuid)} /> : null}
                 </ActionPanel.Section>
                 <ActionPanel.Section>
                   <Action.CopyToClipboard title="Copy Application Name" content={title} />
+                  {url ? <Action.CopyToClipboard title="Copy Application URL" content={url} /> : null}
+                  {resourceUrl ? <Action.CopyToClipboard title="Copy Coolify URL" content={resourceUrl} /> : null}
+                  <Action.CopyToClipboard title="Copy Environment URL" content={environmentUrl} />
                   {app.uuid ? <Action.CopyToClipboard title="Copy Application UUID" content={app.uuid} /> : null}
+                  {app.git_branch ? <Action.CopyToClipboard title="Copy Git Branch" content={app.git_branch} /> : null}
                   {app.git_repository ? (
                     <Action.CopyToClipboard title="Copy Repository URL" content={app.git_repository} />
                   ) : null}

@@ -41,6 +41,14 @@ function EnvironmentList({
           title={environment.name ?? "Unnamed Environment"}
           actions={
             <ActionPanel>
+              <Action.OpenInBrowser
+                title="Open Environment in Coolify"
+                url={
+                  project.uuid && environment.uuid
+                    ? `${instanceUrl}/project/${project.uuid}/environment/${environment.uuid}`
+                    : instanceUrl
+                }
+              />
               <Action.Push
                 title="Show Resources"
                 icon={Icon.List}
@@ -56,17 +64,17 @@ function EnvironmentList({
                   />
                 }
               />
-              <Action.OpenInBrowser
-                title="Open Environment in Coolify"
-                url={
-                  project.uuid && environment.uuid
-                    ? `${instanceUrl}/project/${project.uuid}/environment/${environment.uuid}`
-                    : instanceUrl
-                }
-              />
-              {environment.uuid ? (
-                <Action.CopyToClipboard title="Copy Environment UUID" content={environment.uuid} />
-              ) : null}
+              <ActionPanel.Section>
+                {project.uuid && environment.uuid ? (
+                  <Action.CopyToClipboard
+                    title="Copy Environment URL"
+                    content={`${instanceUrl}/project/${project.uuid}/environment/${environment.uuid}`}
+                  />
+                ) : null}
+                {environment.uuid ? (
+                  <Action.CopyToClipboard title="Copy Environment UUID" content={environment.uuid} />
+                ) : null}
+              </ActionPanel.Section>
             </ActionPanel>
           }
         />
@@ -125,6 +133,7 @@ function ProjectsList() {
             accessories={environmentCount > 0 ? [{ text: `${environmentCount} env` }] : []}
             actions={
               <ActionPanel>
+                <Action.OpenInBrowser title="Open Project in Coolify" url={projectUrl} />
                 {project.uuid ? (
                   <Action.Push
                     title="Show Environments"
@@ -134,8 +143,10 @@ function ProjectsList() {
                     }
                   />
                 ) : null}
-                <Action.OpenInBrowser title="Open Project in Coolify" url={projectUrl} />
-                {project.uuid ? <Action.CopyToClipboard title="Copy Project UUID" content={project.uuid} /> : null}
+                <ActionPanel.Section>
+                  <Action.CopyToClipboard title="Copy Project URL" content={projectUrl} />
+                  {project.uuid ? <Action.CopyToClipboard title="Copy Project UUID" content={project.uuid} /> : null}
+                </ActionPanel.Section>
               </ActionPanel>
             }
           />

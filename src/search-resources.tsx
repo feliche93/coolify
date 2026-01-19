@@ -11,6 +11,7 @@ import {
   toId,
 } from "./api/filters";
 import { buildConsoleLogsUrl, LogsSubmenu } from "./components/logs-actions";
+import { ResourceDetails } from "./components/resource-details";
 import { RedeploySubmenu } from "./components/redeploy-actions";
 import { Application, Database, ResourceItem, ResourceType, Service, buildResources } from "./lib/resources";
 import WithValidToken from "./pages/with-valid-token";
@@ -199,19 +200,19 @@ function ResourcesList() {
                 : undefined;
 
             const accessories = [
-              item.type
-                ? {
-                    tag: {
-                      value: capitalize(item.type),
-                      color: typeColor(item.type),
-                    },
-                  }
-                : null,
               envName
                 ? {
                     tag: {
                       value: envName,
                       color: envColor(envName),
+                    },
+                  }
+                : null,
+              item.type
+                ? {
+                    tag: {
+                      value: capitalize(item.type),
+                      color: typeColor(item.type),
                     },
                   }
                 : null,
@@ -225,16 +226,32 @@ function ResourcesList() {
                 subtitle={item.subtitle}
                 icon={typeIcon(item.type)}
                 accessories={accessories}
+                detail={
+                  <ResourceDetails
+                    info={{
+                      title: item.name,
+                      type: capitalize(item.type),
+                      projectName: envInfo?.projectName,
+                      environmentName: envName,
+                      kind: item.kind,
+                      uuid: item.uuid,
+                      url: item.url,
+                      coolifyUrl: resourceUrl,
+                      environmentUrl,
+                      repoUrl: item.repo,
+                    }}
+                  />
+                }
                 actions={
                   <ActionPanel>
-                    {item.url ? (
-                      <Action.OpenInBrowser title="Open Application" url={item.url} icon={Icon.Link} />
-                    ) : null}
                     {resourceUrl ? (
                       <Action.OpenInBrowser title="Open in Coolify" url={resourceUrl} icon={Icon.Globe} />
                     ) : null}
+                    {item.url ? (
+                      <Action.OpenInBrowser title="Open Application" url={item.url} icon={Icon.Link} />
+                    ) : null}
+                    <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
                     <ActionPanel.Section>
-                      {item.uuid ? <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={String(item.uuid)} /> : null}
                       {item.type === "application" && item.uuid ? (
                         <LogsSubmenu
                           baseUrl={baseUrl}
@@ -243,14 +260,13 @@ function ResourcesList() {
                           consoleLogsUrl={consoleLogsUrl}
                         />
                       ) : null}
-                      <Action.OpenInBrowser
-                        title="Open Environment in Coolify"
-                        url={environmentUrl}
-                        icon={Icon.Globe}
-                      />
+                      {item.uuid ? <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={String(item.uuid)} /> : null}
                     </ActionPanel.Section>
                     <ActionPanel.Section>
                       <Action.CopyToClipboard title="Copy Name" content={item.name} />
+                      {item.url ? <Action.CopyToClipboard title="Copy URL" content={item.url} /> : null}
+                      {resourceUrl ? <Action.CopyToClipboard title="Copy Coolify URL" content={resourceUrl} /> : null}
+                      <Action.CopyToClipboard title="Copy Environment URL" content={environmentUrl} />
                       {item.uuid ? <Action.CopyToClipboard title="Copy UUID" content={item.uuid} /> : null}
                       {item.repo ? <Action.CopyToClipboard title="Copy Repository URL" content={item.repo} /> : null}
                     </ActionPanel.Section>
