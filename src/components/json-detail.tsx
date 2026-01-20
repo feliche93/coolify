@@ -14,7 +14,9 @@ export default function JsonDetail({
   path: string;
 }) {
   const { data, isLoading } = useCachedPromise(
-    async () => requestJson<unknown>(path, { baseUrl, token }),
+    async (currentBaseUrl: string, currentPath: string) => {
+      return requestJson<unknown>(currentPath, { baseUrl: currentBaseUrl, token });
+    },
     [baseUrl, path],
     { keepPreviousData: true },
   );

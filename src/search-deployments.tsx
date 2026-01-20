@@ -155,7 +155,7 @@ function resolveAppKey(deployment: Deployment) {
   return String(deployment.source_app_uuid ?? deployment.application_uuid ?? deployment.application_id ?? "");
 }
 
-function isHttpUrl(url?: string) {
+function isHttpUrl(url?: string): url is string {
   if (!url) return false;
   try {
     const parsed = new URL(url);
@@ -238,8 +238,8 @@ function DeploymentsList() {
   );
 
   const { data: environments, isLoading: isLoadingEnvironments } = useCachedPromise(
-    async () => fetchProjectEnvironments(projects ?? [], { baseUrl, token }),
-    [projects?.length ?? 0],
+    async (projectList: Project[]) => fetchProjectEnvironments(projectList, { baseUrl, token }),
+    [projects ?? []],
     { keepPreviousData: true },
   );
 
@@ -314,7 +314,8 @@ function DeploymentsList() {
     isLoading: isLoadingDeployments,
     revalidate: revalidateDeployments,
   } = useCachedPromise(
-    async () => {
+    async (cacheKey: string) => {
+      void cacheKey;
       const appUuids = filteredAppUuids;
       if (!appUuids.length) {
         const rows = await requestJson<unknown>(`/deployments`, { baseUrl, token, signal: abortable.current?.signal });
@@ -514,7 +515,7 @@ function DeploymentsList() {
                 ) : null}
                 {applicationUuid ? <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={applicationUuid} /> : null}
                 {isHttpUrl(repoUrl) ? (
-                  <Action.OpenInBrowser title="Open Repository" url={repoUrl} icon={Icon.SourceCode} />
+                  <Action.OpenInBrowser title="Open Repository" url={repoUrl} icon={Icon.Code} />
                 ) : null}
                 {isHttpUrl(prUrl) ? (
                   <Action.OpenInBrowser title="Open Pull Request" url={prUrl} icon={Icon.Paperclip} />
@@ -672,9 +673,7 @@ function DeploymentDetails({
           {isHttpUrl(coolifyUrl) ? (
             <Action.OpenInBrowser title="Open in Coolify" url={coolifyUrl!} icon={Icon.Globe} />
           ) : null}
-          {isHttpUrl(repoUrl) ? (
-            <Action.OpenInBrowser title="Open Repository" url={repoUrl} icon={Icon.SourceCode} />
-          ) : null}
+          {isHttpUrl(repoUrl) ? <Action.OpenInBrowser title="Open Repository" url={repoUrl} icon={Icon.Code} /> : null}
           {isHttpUrl(prUrl) ? (
             <Action.OpenInBrowser title="Open Pull Request" url={prUrl} icon={Icon.Paperclip} />
           ) : null}

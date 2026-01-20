@@ -60,8 +60,8 @@ export default function ApplicationDeploymentsList({
   instanceUrl: string;
 }) {
   const { data: deployments = [], isLoading } = useCachedPromise(
-    async () => {
-      const response = await requestJson<unknown>(`/deployments/applications/${applicationUuid}`, {
+    async (uuid: string) => {
+      const response = await requestJson<unknown>(`/deployments/applications/${uuid}`, {
         baseUrl,
         token,
       });

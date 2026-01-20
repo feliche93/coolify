@@ -60,8 +60,8 @@ function ResourcesList() {
   );
 
   const { data: environments, isLoading: isLoadingEnvironments } = useCachedPromise(
-    async () => fetchProjectEnvironments(projects ?? [], { baseUrl, token }),
-    [projects?.length ?? 0],
+    async (projectList: Project[]) => fetchProjectEnvironments(projectList, { baseUrl, token }),
+    [projects ?? []],
     { keepPreviousData: true },
   );
 
@@ -352,7 +352,6 @@ function ResourcesList() {
                               uuid={String(item.uuid)}
                             />
                           }
-                          style={Action.Style.Destructive}
                         />
                       </ActionPanel.Section>
                     ) : null}

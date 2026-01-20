@@ -1,4 +1,14 @@
-import { Action, ActionPanel, Icon, List, Toast, confirmAlert, getPreferenceValues, showToast } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  Alert,
+  Icon,
+  List,
+  Toast,
+  confirmAlert,
+  getPreferenceValues,
+  showToast,
+} from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useState } from "react";
 import { Preferences, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
@@ -72,7 +82,7 @@ function PrivateKeysList() {
                         message: "This operation cannot be undone.",
                         primaryAction: {
                           title: "Delete",
-                          style: Action.Style.Destructive,
+                          style: Alert.ActionStyle.Destructive,
                           async onAction() {
                             try {
                               await requestJson(`/security/keys/${key.uuid}`, {

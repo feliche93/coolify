@@ -108,7 +108,8 @@ function LogsDetail({
   lines: number;
 }) {
   const { data, isLoading } = useCachedPromise(
-    async () => fetchApplicationLogs({ baseUrl, token, applicationUuid, lines }),
+    async (currentBaseUrl: string, currentUuid: string, currentLines: number) =>
+      fetchApplicationLogs({ baseUrl: currentBaseUrl, token, applicationUuid: currentUuid, lines: currentLines }),
     [baseUrl, applicationUuid, lines],
   );
 

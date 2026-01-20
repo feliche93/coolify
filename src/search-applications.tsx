@@ -123,8 +123,8 @@ function ApplicationsList() {
   );
 
   const { data: environments, isLoading: isLoadingEnvironments } = useCachedPromise(
-    async () => fetchProjectEnvironments(projects ?? [], { baseUrl, token }),
-    [projects?.length ?? 0],
+    async (projectList: Project[]) => fetchProjectEnvironments(projectList, { baseUrl, token }),
+    [projects ?? []],
     { keepPreviousData: true },
   );
   const envToProjectMap = useMemo(() => buildEnvToProjectMap(environments ?? []), [environments]);
@@ -366,7 +366,6 @@ function ApplicationsList() {
                     <Action.Push
                       title="Delete Application"
                       icon={Icon.Trash}
-                      style={Action.Style.Destructive}
                       target={
                         <DeleteResourceForm
                           baseUrl={baseUrl}

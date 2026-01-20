@@ -1,4 +1,15 @@
-import { Action, ActionPanel, Form, Icon, List, Toast, confirmAlert, showToast, useNavigation } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  Alert,
+  Form,
+  Icon,
+  List,
+  Toast,
+  confirmAlert,
+  showToast,
+  useNavigation,
+} from "@raycast/api";
 import { FormValidation, useCachedPromise, useForm } from "@raycast/utils";
 import { useState } from "react";
 import { requestJson } from "../api/client";
@@ -28,6 +39,20 @@ export type EnvVarResource = {
   name: string;
 };
 
+type EnvVarFormValues = {
+  key: string;
+  value: string;
+  is_preview: boolean;
+  is_build_time: boolean;
+  is_literal: boolean;
+  is_multiline: boolean;
+  is_shown_once: boolean;
+};
+
+type BulkEnvVarValues = {
+  payload: string;
+};
+
 function resourceTypeToEndpoint(type: EnvVarResource["type"]) {
   return type === "application" ? "applications" : "services";
 }
@@ -50,9 +75,13 @@ export default function EnvironmentVariablesList({
     isLoading,
     data: envs = [],
     revalidate,
-  } = useCachedPromise(async () => requestJson<EnvironmentVariable[]>(endpoint, { baseUrl, token }), [endpoint], {
-    keepPreviousData: true,
-  });
+  } = useCachedPromise(
+    async (path: string) => requestJson<EnvironmentVariable[]>(path, { baseUrl, token }),
+    [endpoint],
+    {
+      keepPreviousData: true,
+    },
+  );
 
   return (
     <List isLoading={isLoading} searchBarPlaceholder="Search environment variable" isShowingDetail>
@@ -109,7 +138,7 @@ export default function EnvironmentVariablesList({
                       message: `Delete ${env.key ?? "this variable"}?`,
                       primaryAction: {
                         title: "Delete",
-                        style: Action.Style.Destructive,
+                        style: Alert.ActionStyle.Destructive,
                         async onAction() {
                           try {
                             await requestJson(`${envVarsPath(resource)}/${env.uuid}`, {
@@ -164,7 +193,7 @@ function EnvVarForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEdit = Boolean(env?.key);
 
-  const { itemProps, handleSubmit, values } = useForm({
+  const { itemProps, handleSubmit, values } = useForm<EnvVarFormValues>({
     onSubmit: async () => {
       setIsSubmitting(true);
       try {
@@ -248,7 +277,7 @@ function BulkEnvVarForm({
   const { pop } = useNavigation();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { itemProps, handleSubmit, values } = useForm({
+  const { itemProps, handleSubmit, values } = useForm<BulkEnvVarValues>({
     onSubmit: async () => {
       setIsSubmitting(true);
       try {

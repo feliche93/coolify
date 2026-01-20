@@ -38,9 +38,9 @@ function EnvironmentList({
 }) {
   const projectUuid = project.uuid ?? "";
   const { data: environments, isLoading } = useCachedPromise(
-    async () => {
-      if (!projectUuid) return [] as ProjectEnvironmentResponse[];
-      return requestJson<ProjectEnvironmentResponse[]>(`/projects/${projectUuid}/environments`, { baseUrl, token });
+    async (uuid: string) => {
+      if (!uuid) return [] as ProjectEnvironmentResponse[];
+      return requestJson<ProjectEnvironmentResponse[]>(`/projects/${uuid}/environments`, { baseUrl, token });
     },
     [projectUuid],
     { keepPreviousData: true },

@@ -88,10 +88,10 @@ function ServicesList() {
   );
 
   const { data: environments, isLoading: isLoadingEnvironments } = useCachedPromise(
-    async () => {
-      return fetchProjectEnvironments(projects ?? [], { baseUrl, token });
+    async (projectList: Project[]) => {
+      return fetchProjectEnvironments(projectList, { baseUrl, token });
     },
-    [projects?.length ?? 0],
+    [projects ?? []],
     { keepPreviousData: true },
   );
   const envToProjectMap = useMemo(() => buildEnvToProjectMap(environments ?? []), [environments]);
@@ -310,7 +310,6 @@ function ServicesList() {
                     <Action.Push
                       title="Delete Service"
                       icon={Icon.Trash}
-                      style={Action.Style.Destructive}
                       target={
                         <DeleteResourceForm
                           baseUrl={baseUrl}

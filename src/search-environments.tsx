@@ -24,10 +24,10 @@ function EnvironmentsList() {
   );
 
   const { data: environments, isLoading: isLoadingEnvironments } = useCachedPromise(
-    async () => {
-      return fetchProjectEnvironments(projects ?? [], { baseUrl, token });
+    async (projectList: Project[]) => {
+      return fetchProjectEnvironments(projectList, { baseUrl, token });
     },
-    [projects?.length ?? 0],
+    [projects ?? []],
     { keepPreviousData: true },
   );
 

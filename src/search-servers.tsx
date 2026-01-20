@@ -78,7 +78,10 @@ function ServerDetailsView({ baseUrl, token, server }: { baseUrl: string; token:
 
 function ServerResourcesView({ baseUrl, token, server }: { baseUrl: string; token: string; server: Server }) {
   const { isLoading, data: resources = [] } = useCachedPromise(
-    async () => requestJson<ServerResource[]>(`/servers/${server.uuid}/resources`, { baseUrl, token }),
+    async (uuid?: string) => {
+      if (!uuid) return [];
+      return requestJson<ServerResource[]>(`/servers/${uuid}/resources`, { baseUrl, token });
+    },
     [server.uuid],
     { keepPreviousData: true },
   );
@@ -137,7 +140,10 @@ function ServerResourcesView({ baseUrl, token, server }: { baseUrl: string; toke
 
 function ServerDomainsView({ baseUrl, token, server }: { baseUrl: string; token: string; server: Server }) {
   const { isLoading, data: domains = [] } = useCachedPromise(
-    async () => requestJson<ServerDomainEntry[]>(`/servers/${server.uuid}/domains`, { baseUrl, token }),
+    async (uuid?: string) => {
+      if (!uuid) return [];
+      return requestJson<ServerDomainEntry[]>(`/servers/${uuid}/domains`, { baseUrl, token });
+    },
     [server.uuid],
     { keepPreviousData: true },
   );
