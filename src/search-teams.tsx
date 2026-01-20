@@ -19,8 +19,11 @@ type TeamMember = {
 
 function TeamMembersList({ baseUrl, token, team }: { baseUrl: string; token: string; team: Team }) {
   const { data: members = [], isLoading } = useCachedPromise(
-    async () => requestJson<TeamMember[]>(`/teams/${team.id}/members`, { baseUrl, token }),
-    [team.id],
+    async () => {
+      if (!team.id) return [];
+      return requestJson<TeamMember[]>(`/teams/${team.id}/members`, { baseUrl, token });
+    },
+    [],
     { keepPreviousData: true },
   );
 
