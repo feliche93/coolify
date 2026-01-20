@@ -144,6 +144,59 @@
         "keys",
         "ssh"
       ]
+    },
+    {
+      "name": "coolify-status",
+      "title": "Coolify Status",
+      "subtitle": "Coolify",
+      "description": "View Coolify health and version",
+      "icon": "coolify-logo.png",
+      "mode": "view",
+      "keywords": [
+        "coolify",
+        "status",
+        "health",
+        "version"
+      ]
+    },
+    {
+      "name": "create-application",
+      "title": "Create Application",
+      "subtitle": "Coolify",
+      "description": "Create a new Coolify application (advanced)",
+      "icon": "coolify-logo.png",
+      "mode": "view",
+      "keywords": [
+        "coolify",
+        "application",
+        "create"
+      ]
+    },
+    {
+      "name": "create-database",
+      "title": "Create Database",
+      "subtitle": "Coolify",
+      "description": "Create a new Coolify database (advanced)",
+      "icon": "coolify-logo.png",
+      "mode": "view",
+      "keywords": [
+        "coolify",
+        "database",
+        "create"
+      ]
+    },
+    {
+      "name": "resources-api",
+      "title": "Resources (API)",
+      "subtitle": "Coolify",
+      "description": "View raw resources response",
+      "icon": "coolify-logo.png",
+      "mode": "view",
+      "keywords": [
+        "coolify",
+        "resources",
+        "api"
+      ]
     }
   ],
   "preferences": [

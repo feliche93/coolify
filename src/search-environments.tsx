@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
 import { Project, buildEnvLookup, toId } from "./api/filters";
 import EnvironmentResourcesList from "./components/environment-resources";
+import JsonDetail from "./components/json-detail";
 import WithValidToken from "./pages/with-valid-token";
 
 function EnvironmentsList() {
@@ -107,7 +108,27 @@ function EnvironmentsList() {
                       : instanceUrl
                   }
                 />
+                {projectUuid ? (
+                  <Action.Push
+                    title="View Environment JSON"
+                    icon={Icon.Code}
+                    target={
+                      <JsonDetail
+                        title="Environment Details"
+                        baseUrl={baseUrl}
+                        token={token}
+                        path={`/projects/${projectUuid}/${env.uuid ?? env.name ?? ""}`}
+                      />
+                    }
+                  />
+                ) : null}
                 {env.uuid ? <Action.CopyToClipboard title="Copy Environment UUID" content={env.uuid} /> : null}
+                {projectUuid && env.uuid ? (
+                  <Action.CopyToClipboard
+                    title="Copy Environment URL"
+                    content={`${instanceUrl}/project/${projectUuid}/environment/${env.uuid}`}
+                  />
+                ) : null}
               </ActionPanel>
             }
           />

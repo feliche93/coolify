@@ -10,6 +10,7 @@ import {
   buildEnvToProjectMap,
   toId,
 } from "./api/filters";
+import JsonDetail from "./components/json-detail";
 import { LogsSubmenu } from "./components/logs-actions";
 import { RedeploySubmenu } from "./components/redeploy-actions";
 import WithValidToken from "./pages/with-valid-token";
@@ -462,6 +463,20 @@ function DeploymentsList() {
                     />
                   }
                 />
+                {deployment.deployment_uuid ? (
+                  <Action.Push
+                    title="View Deployment JSON"
+                    icon={Icon.Code}
+                    target={
+                      <JsonDetail
+                        title="Deployment Details"
+                        baseUrl={baseUrl}
+                        token={token}
+                        path={`/deployments/${deployment.deployment_uuid}`}
+                      />
+                    }
+                  />
+                ) : null}
                 {isHttpUrl(deploymentUrl) ? (
                   <Action.OpenInBrowser title="Open in Coolify" url={deploymentUrl!} icon={Icon.Globe} />
                 ) : isHttpUrl(applicationUrl) ? (

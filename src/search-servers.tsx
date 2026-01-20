@@ -67,6 +67,11 @@ type ServerResource = {
   created_at?: string;
 };
 
+type ServerDomainEntry = {
+  ip?: string;
+  domains?: string[];
+};
+
 function serverColor(server: Server) {
   if (server.is_reachable && server.is_usable) return Color.Green;
   if (server.is_reachable || server.is_usable) return Color.Yellow;
@@ -145,6 +150,43 @@ function ServerResourcesView({ baseUrl, token, server }: { baseUrl: string; toke
         <List.EmptyView
           icon={Icon.MagnifyingGlass}
           title="No resources found"
+          description="Check API token and permissions."
+        />
+      ) : null}
+    </List>
+  );
+}
+
+function ServerDomainsView({ baseUrl, token, server }: { baseUrl: string; token: string; server: Server }) {
+  const { isLoading, data: domains = [] } = useCachedPromise(
+    async () => requestJson<ServerDomainEntry[]>(`/servers/${server.uuid}/domains`, { baseUrl, token }),
+    [server.uuid],
+    { keepPreviousData: true },
+  );
+
+  return (
+    <List isLoading={isLoading} searchBarPlaceholder="Search domains...">
+      <List.Section title={`${server.name ?? "Server"} / Domains`} subtitle={`${domains.length} entries`}>
+        {domains.flatMap((entry) =>
+          (entry.domains ?? []).map((domain) => (
+            <List.Item
+              key={`${entry.ip ?? ""}-${domain}`}
+              icon={Icon.Globe}
+              title={domain}
+              subtitle={entry.ip}
+              actions={
+                <ActionPanel>
+                  <Action.OpenInBrowser title="Open Domain" url={`https://${domain}`} icon={Icon.Link} />
+                </ActionPanel>
+              }
+            />
+          )),
+        )}
+      </List.Section>
+      {!isLoading && domains.length === 0 ? (
+        <List.EmptyView
+          icon={Icon.MagnifyingGlass}
+          title="No domains found"
           description="Check API token and permissions."
         />
       ) : null}
@@ -288,11 +330,34 @@ function ServersList() {
                     target={<ServerResourcesView baseUrl={baseUrl} token={token} server={server} />}
                   />
                   <Action.Push
+                    icon={Icon.Globe}
+                    title="View Domains"
+                    target={<ServerDomainsView baseUrl={baseUrl} token={token} server={server} />}
+                  />
+                  <Action.Push
                     icon={Icon.Plus}
                     title="Add Server"
                     target={<CreateServerForm baseUrl={baseUrl} token={token} onAdded={revalidate} />}
                     shortcut={Keyboard.Shortcut.Common.New}
                   />
+                  {server.uuid ? (
+                    <Action
+                      icon={Icon.CheckCircle}
+                      title="Validate Server"
+                      onAction={async () => {
+                        try {
+                          await requestJson(`/servers/${server.uuid}/validate`, { baseUrl, token });
+                          await showToast({ style: Toast.Style.Success, title: "Validation started" });
+                        } catch (error) {
+                          await showToast({
+                            style: Toast.Style.Failure,
+                            title: "Failed to validate",
+                            message: error instanceof Error ? error.message : String(error),
+                          });
+                        }
+                      }}
+                    />
+                  ) : null}
                   {server.uuid ? (
                     <Action.OpenInBrowser
                       title="Open in Coolify"

@@ -1,8 +1,11 @@
-import { Action, ActionPanel, Color, Icon, List, getPreferenceValues } from "@raycast/api";
+import { Action, ActionPanel, Color, Icon, List, Toast, getPreferenceValues, showToast } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
 import { Project, buildEnvLookup, buildEnvNameToIdsMap, buildEnvToProjectMap, toId } from "./api/filters";
+import DeleteResourceForm from "./components/delete-resource";
+import JsonDetail from "./components/json-detail";
+import JsonUpdateForm from "./components/json-update-form";
 import { RedeploySubmenu } from "./components/redeploy-actions";
 import { ResourceDetails } from "./components/resource-details";
 import WithValidToken from "./pages/with-valid-token";
@@ -216,6 +219,95 @@ function DatabasesList() {
                     <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={String(database.uuid)} />
                   ) : null}
                 </ActionPanel.Section>
+                {database.uuid ? (
+                  <ActionPanel.Section title="Lifecycle">
+                    <Action
+                      icon={{ source: Icon.Play, tintColor: Color.Green }}
+                      title="Start"
+                      onAction={async () => {
+                        try {
+                          await requestJson(`/databases/${database.uuid}/start`, { baseUrl, token });
+                          await showToast({ style: Toast.Style.Success, title: "Start triggered" });
+                        } catch (error) {
+                          await showToast({
+                            style: Toast.Style.Failure,
+                            title: "Failed to start",
+                            message: error instanceof Error ? error.message : String(error),
+                          });
+                        }
+                      }}
+                    />
+                    <Action
+                      icon={{ source: Icon.Stop, tintColor: Color.Red }}
+                      title="Stop"
+                      onAction={async () => {
+                        try {
+                          await requestJson(`/databases/${database.uuid}/stop`, { baseUrl, token });
+                          await showToast({ style: Toast.Style.Success, title: "Stop triggered" });
+                        } catch (error) {
+                          await showToast({
+                            style: Toast.Style.Failure,
+                            title: "Failed to stop",
+                            message: error instanceof Error ? error.message : String(error),
+                          });
+                        }
+                      }}
+                    />
+                    <Action
+                      icon={{ source: Icon.Redo, tintColor: Color.Orange }}
+                      title="Restart"
+                      onAction={async () => {
+                        try {
+                          await requestJson(`/databases/${database.uuid}/restart`, { baseUrl, token });
+                          await showToast({ style: Toast.Style.Success, title: "Restart triggered" });
+                        } catch (error) {
+                          await showToast({
+                            style: Toast.Style.Failure,
+                            title: "Failed to restart",
+                            message: error instanceof Error ? error.message : String(error),
+                          });
+                        }
+                      }}
+                    />
+                    <Action.Push
+                      title="View Database JSON"
+                      icon={Icon.Code}
+                      target={
+                        <JsonDetail
+                          title="Database Details"
+                          baseUrl={baseUrl}
+                          token={token}
+                          path={`/databases/${database.uuid}`}
+                        />
+                      }
+                    />
+                    <Action.Push
+                      title="Update Database (JSON)"
+                      icon={Icon.Pencil}
+                      target={
+                        <JsonUpdateForm
+                          title="Database"
+                          baseUrl={baseUrl}
+                          token={token}
+                          path={`/databases/${database.uuid}`}
+                        />
+                      }
+                    />
+                    <Action.Push
+                      title="Delete Database"
+                      icon={Icon.Trash}
+                      style={Action.Style.Destructive}
+                      target={
+                        <DeleteResourceForm
+                          baseUrl={baseUrl}
+                          token={token}
+                          resourceType="database"
+                          uuid={String(database.uuid)}
+                        />
+                      }
+                    />
+                  </ActionPanel.Section>
+                ) : null}
                 <ActionPanel.Section>
                   <Action.CopyToClipboard title="Copy Database Name" content={title} />
                   {resourceUrl ? <Action.CopyToClipboard title="Copy Coolify URL" content={resourceUrl} /> : null}

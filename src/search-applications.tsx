@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Color, Icon, List, getPreferenceValues } from "@raycast/api";
+import { Action, ActionPanel, Color, Icon, List, Toast, getPreferenceValues, showToast } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
@@ -10,7 +10,10 @@ import {
   buildEnvToProjectMap,
   toId,
 } from "./api/filters";
+import ApplicationDeploymentsList from "./components/application-deployments";
+import DeleteResourceForm from "./components/delete-resource";
 import { buildConsoleLogsUrl, LogsSubmenu } from "./components/logs-actions";
+import JsonDetail from "./components/json-detail";
 import { ResourceDetails } from "./components/resource-details";
 import { RedeploySubmenu } from "./components/redeploy-actions";
 import EnvironmentVariablesList from "./components/environment-variables";
@@ -274,6 +277,21 @@ function ApplicationsList() {
                     />
                   ) : null}
                   {app.uuid ? (
+                    <Action.Push
+                      title="View Deployments"
+                      icon={Icon.List}
+                      target={
+                        <ApplicationDeploymentsList
+                          baseUrl={baseUrl}
+                          token={token}
+                          applicationUuid={String(app.uuid)}
+                          applicationName={title}
+                          instanceUrl={instanceUrl}
+                        />
+                      }
+                    />
+                  ) : null}
+                  {app.uuid ? (
                     <LogsSubmenu
                       baseUrl={baseUrl}
                       token={token}
@@ -283,6 +301,83 @@ function ApplicationsList() {
                   ) : null}
                   {app.uuid ? <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={String(app.uuid)} /> : null}
                 </ActionPanel.Section>
+                {app.uuid ? (
+                  <ActionPanel.Section title="Lifecycle">
+                    <Action
+                      icon={{ source: Icon.Play, tintColor: Color.Green }}
+                      title="Start"
+                      onAction={async () => {
+                        try {
+                          await requestJson(`/applications/${app.uuid}/start`, { baseUrl, token });
+                          await showToast({ style: Toast.Style.Success, title: "Start triggered" });
+                        } catch (error) {
+                          await showToast({
+                            style: Toast.Style.Failure,
+                            title: "Failed to start",
+                            message: error instanceof Error ? error.message : String(error),
+                          });
+                        }
+                      }}
+                    />
+                    <Action
+                      icon={{ source: Icon.Stop, tintColor: Color.Red }}
+                      title="Stop"
+                      onAction={async () => {
+                        try {
+                          await requestJson(`/applications/${app.uuid}/stop`, { baseUrl, token });
+                          await showToast({ style: Toast.Style.Success, title: "Stop triggered" });
+                        } catch (error) {
+                          await showToast({
+                            style: Toast.Style.Failure,
+                            title: "Failed to stop",
+                            message: error instanceof Error ? error.message : String(error),
+                          });
+                        }
+                      }}
+                    />
+                    <Action
+                      icon={{ source: Icon.Redo, tintColor: Color.Orange }}
+                      title="Restart"
+                      onAction={async () => {
+                        try {
+                          await requestJson(`/applications/${app.uuid}/restart`, { baseUrl, token });
+                          await showToast({ style: Toast.Style.Success, title: "Restart triggered" });
+                        } catch (error) {
+                          await showToast({
+                            style: Toast.Style.Failure,
+                            title: "Failed to restart",
+                            message: error instanceof Error ? error.message : String(error),
+                          });
+                        }
+                      }}
+                    />
+                    <Action.Push
+                      title="View Application JSON"
+                      icon={Icon.Code}
+                      target={
+                        <JsonDetail
+                          title="Application Details"
+                          baseUrl={baseUrl}
+                          token={token}
+                          path={`/applications/${app.uuid}`}
+                        />
+                      }
+                    />
+                    <Action.Push
+                      title="Delete Application"
+                      icon={Icon.Trash}
+                      style={Action.Style.Destructive}
+                      target={
+                        <DeleteResourceForm
+                          baseUrl={baseUrl}
+                          token={token}
+                          resourceType="application"
+                          uuid={String(app.uuid)}
+                        />
+                      }
+                    />
+                  </ActionPanel.Section>
+                ) : null}
                 <ActionPanel.Section>
                   <Action.CopyToClipboard title="Copy Application Name" content={title} />
                   {url ? <Action.CopyToClipboard title="Copy Application URL" content={url} /> : null}

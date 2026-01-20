@@ -2,6 +2,7 @@ import { Action, ActionPanel, Icon, List, getPreferenceValues } from "@raycast/a
 import { useCachedPromise } from "@raycast/utils";
 import { useState } from "react";
 import { Preferences, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
+import JsonDetail from "./components/json-detail";
 import WithValidToken from "./pages/with-valid-token";
 
 type Team = {
@@ -63,6 +64,16 @@ function TeamsList() {
     [],
     { keepPreviousData: true },
   );
+  const { data: currentTeam } = useCachedPromise(
+    async () => requestJson<Team>("/teams/current", { baseUrl, token }),
+    [],
+    { keepPreviousData: true },
+  );
+  const { data: currentMembers = [] } = useCachedPromise(
+    async () => requestJson<TeamMember[]>("/teams/current/members", { baseUrl, token }),
+    [],
+    { keepPreviousData: true },
+  );
 
   const filteredTeams = teams.filter((team) => {
     const lower = searchText.trim().toLowerCase();
@@ -73,6 +84,40 @@ function TeamsList() {
 
   return (
     <List isLoading={isLoading} searchBarPlaceholder="Search Teams..." onSearchTextChange={setSearchText} throttle>
+      {currentTeam ? (
+        <List.Section title="Current Team">
+          <List.Item
+            key={`current-${currentTeam.id ?? currentTeam.name}`}
+            icon={Icon.Person}
+            title={currentTeam.name ?? "Current Team"}
+            subtitle={currentTeam.description ?? ""}
+            accessories={[{ text: `${currentMembers.length} members` }]}
+            actions={
+              <ActionPanel>
+                <Action.Push
+                  icon={Icon.Person}
+                  title="View Members"
+                  target={<TeamMembersList baseUrl={baseUrl} token={token} team={currentTeam} />}
+                />
+                {currentTeam.id ? (
+                  <Action.Push
+                    title="View Team JSON"
+                    icon={Icon.Code}
+                    target={
+                      <JsonDetail
+                        title="Team Details"
+                        baseUrl={baseUrl}
+                        token={token}
+                        path={`/teams/${currentTeam.id}`}
+                      />
+                    }
+                  />
+                ) : null}
+              </ActionPanel>
+            }
+          />
+        </List.Section>
+      ) : null}
       <List.Section title="Teams" subtitle={`${filteredTeams.length} teams`}>
         {filteredTeams.map((team) => (
           <List.Item
@@ -87,6 +132,15 @@ function TeamsList() {
                     icon={Icon.Person}
                     title="View Members"
                     target={<TeamMembersList baseUrl={baseUrl} token={token} team={team} />}
+                  />
+                ) : null}
+                {team.id ? (
+                  <Action.Push
+                    title="View Team JSON"
+                    icon={Icon.Code}
+                    target={
+                      <JsonDetail title="Team Details" baseUrl={baseUrl} token={token} path={`/teams/${team.id}`} />
+                    }
                   />
                 ) : null}
                 {team.id ? (

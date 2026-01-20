@@ -1,7 +1,8 @@
-import { Action, ActionPanel, Icon, List, getPreferenceValues } from "@raycast/api";
+import { Action, ActionPanel, Icon, List, Toast, confirmAlert, getPreferenceValues, showToast } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useState } from "react";
 import { Preferences, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
+import JsonDetail from "./components/json-detail";
 import WithValidToken from "./pages/with-valid-token";
 
 type PrivateKey = {
@@ -44,8 +45,55 @@ function PrivateKeysList() {
                   title="Toggle Private Key"
                   onAction={() => setIsShowingDetail((prev) => !prev)}
                 />
+                {key.uuid ? (
+                  <Action.Push
+                    title="View Key JSON"
+                    icon={Icon.Code}
+                    target={
+                      <JsonDetail
+                        title="Private Key Details"
+                        baseUrl={baseUrl}
+                        token={token}
+                        path={`/security/keys/${key.uuid}`}
+                      />
+                    }
+                  />
+                ) : null}
                 {key.private_key ? <Action.CopyToClipboard title="Copy Private Key" content={key.private_key} /> : null}
                 {key.public_key ? <Action.CopyToClipboard title="Copy Public Key" content={key.public_key} /> : null}
+                {key.uuid ? (
+                  <Action
+                    title="Delete Key"
+                    icon={Icon.Trash}
+                    style={Action.Style.Destructive}
+                    onAction={async () => {
+                      await confirmAlert({
+                        title: "Delete Private Key?",
+                        message: "This operation cannot be undone.",
+                        primaryAction: {
+                          title: "Delete",
+                          style: Action.Style.Destructive,
+                          async onAction() {
+                            try {
+                              await requestJson(`/security/keys/${key.uuid}`, {
+                                baseUrl,
+                                token,
+                                method: "DELETE",
+                              });
+                              await showToast({ style: Toast.Style.Success, title: "Key deleted" });
+                            } catch (error) {
+                              await showToast({
+                                style: Toast.Style.Failure,
+                                title: "Failed to delete key",
+                                message: error instanceof Error ? error.message : String(error),
+                              });
+                            }
+                          },
+                        },
+                      });
+                    }}
+                  />
+                ) : null}
                 {key.id ? (
                   <Action.OpenInBrowser
                     title="Open in Coolify"

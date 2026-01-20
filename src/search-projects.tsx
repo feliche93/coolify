@@ -14,6 +14,7 @@ import { useMemo, useState } from "react";
 import { Preferences, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
 import { Project, ProjectEnvironment, flattenEnvironments, toId } from "./api/filters";
 import EnvironmentResourcesList from "./components/environment-resources";
+import JsonDetail from "./components/json-detail";
 import CreateProjectForm from "./components/projects/create-project";
 import UpdateProjectForm from "./components/projects/update-project";
 import WithValidToken from "./pages/with-valid-token";
@@ -61,6 +62,20 @@ function EnvironmentList({
                     : instanceUrl
                 }
               />
+              {project.uuid ? (
+                <Action.Push
+                  title="View Environment JSON"
+                  icon={Icon.Code}
+                  target={
+                    <JsonDetail
+                      title="Environment Details"
+                      baseUrl={baseUrl}
+                      token={token}
+                      path={`/projects/${project.uuid}/${environment.uuid ?? environment.name ?? ""}`}
+                    />
+                  }
+                />
+              ) : null}
               <Action.Push
                 title="Show Resources"
                 icon={Icon.List}
@@ -156,6 +171,20 @@ function ProjectsList() {
                     icon={Icon.List}
                     target={
                       <EnvironmentList baseUrl={baseUrl} token={token} instanceUrl={instanceUrl} project={project} />
+                    }
+                  />
+                ) : null}
+                {project.uuid ? (
+                  <Action.Push
+                    title="View Project JSON"
+                    icon={Icon.Code}
+                    target={
+                      <JsonDetail
+                        title="Project Details"
+                        baseUrl={baseUrl}
+                        token={token}
+                        path={`/projects/${project.uuid}`}
+                      />
                     }
                   />
                 ) : null}
