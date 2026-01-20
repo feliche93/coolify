@@ -13,6 +13,7 @@ import {
 import { buildConsoleLogsUrl, LogsSubmenu } from "./components/logs-actions";
 import { ResourceDetails } from "./components/resource-details";
 import { RedeploySubmenu } from "./components/redeploy-actions";
+import EnvironmentVariablesList from "./components/environment-variables";
 import WithValidToken from "./pages/with-valid-token";
 
 type Application = {
@@ -259,6 +260,19 @@ function ApplicationsList() {
                 {url ? <Action.OpenInBrowser title="Open Application" url={url} icon={Icon.Link} /> : null}
                 <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
                 <ActionPanel.Section>
+                  {app.uuid ? (
+                    <Action.Push
+                      title="View Environment Variables"
+                      icon={Icon.Terminal}
+                      target={
+                        <EnvironmentVariablesList
+                          baseUrl={baseUrl}
+                          token={token}
+                          resource={{ type: "application", uuid: String(app.uuid), name: title }}
+                        />
+                      }
+                    />
+                  ) : null}
                   {app.uuid ? (
                     <LogsSubmenu
                       baseUrl={baseUrl}

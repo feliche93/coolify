@@ -3,6 +3,7 @@ import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
 import { Project, buildEnvLookup, buildEnvNameToIdsMap, buildEnvToProjectMap, toId } from "./api/filters";
+import EnvironmentVariablesList from "./components/environment-variables";
 import { RedeploySubmenu } from "./components/redeploy-actions";
 import { ResourceDetails } from "./components/resource-details";
 import WithValidToken from "./pages/with-valid-token";
@@ -212,6 +213,19 @@ function ServicesList() {
                 ) : null}
                 <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
                 <ActionPanel.Section>
+                  {service.uuid ? (
+                    <Action.Push
+                      title="View Environment Variables"
+                      icon={Icon.Terminal}
+                      target={
+                        <EnvironmentVariablesList
+                          baseUrl={baseUrl}
+                          token={token}
+                          resource={{ type: "service", uuid: String(service.uuid), name: title }}
+                        />
+                      }
+                    />
+                  ) : null}
                   {service.uuid ? (
                     <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={String(service.uuid)} />
                   ) : null}

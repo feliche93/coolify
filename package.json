@@ -105,6 +105,45 @@
         "databases",
         "db"
       ]
+    },
+    {
+      "name": "search-servers",
+      "title": "Search Servers",
+      "subtitle": "Coolify",
+      "description": "List Coolify servers",
+      "icon": "coolify-logo.png",
+      "mode": "view",
+      "keywords": [
+        "coolify",
+        "servers",
+        "infrastructure"
+      ]
+    },
+    {
+      "name": "search-teams",
+      "title": "Search Teams",
+      "subtitle": "Coolify",
+      "description": "List Coolify teams and members",
+      "icon": "coolify-logo.png",
+      "mode": "view",
+      "keywords": [
+        "coolify",
+        "teams",
+        "members"
+      ]
+    },
+    {
+      "name": "search-private-keys",
+      "title": "Search Private Keys",
+      "subtitle": "Coolify",
+      "description": "List Coolify private keys",
+      "icon": "coolify-logo.png",
+      "mode": "view",
+      "keywords": [
+        "coolify",
+        "keys",
+        "ssh"
+      ]
     }
   ],
   "preferences": [

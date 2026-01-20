@@ -1,9 +1,21 @@
-import { Action, ActionPanel, Icon, List, getPreferenceValues } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  Alert,
+  Icon,
+  List,
+  confirmAlert,
+  getPreferenceValues,
+  showToast,
+  Toast,
+} from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { Preferences, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
 import { Project, ProjectEnvironment, flattenEnvironments, toId } from "./api/filters";
 import EnvironmentResourcesList from "./components/environment-resources";
+import CreateProjectForm from "./components/projects/create-project";
+import UpdateProjectForm from "./components/projects/update-project";
 import WithValidToken from "./pages/with-valid-token";
 
 type ProjectEnvironmentResponse = {
@@ -97,7 +109,11 @@ function ProjectsList() {
   const token = apiToken?.trim() ?? "";
   const [searchText, setSearchText] = useState("");
 
-  const { data: projects, isLoading } = useCachedPromise(
+  const {
+    data: projects,
+    isLoading,
+    revalidate,
+  } = useCachedPromise(
     async () => {
       return requestJson<Project[]>("/projects", { baseUrl, token });
     },
@@ -141,6 +157,51 @@ function ProjectsList() {
                     target={
                       <EnvironmentList baseUrl={baseUrl} token={token} instanceUrl={instanceUrl} project={project} />
                     }
+                  />
+                ) : null}
+                {project.uuid ? (
+                  <Action.Push
+                    title="Update Project"
+                    icon={Icon.Pencil}
+                    target={
+                      <UpdateProjectForm baseUrl={baseUrl} token={token} project={project} onUpdated={revalidate} />
+                    }
+                  />
+                ) : null}
+                <Action.Push
+                  title="Add Project"
+                  icon={Icon.Plus}
+                  target={<CreateProjectForm baseUrl={baseUrl} token={token} onAdded={revalidate} />}
+                />
+                {project.uuid ? (
+                  <Action
+                    title="Delete Project"
+                    icon={Icon.Trash}
+                    style={Action.Style.Destructive}
+                    onAction={async () => {
+                      await confirmAlert({
+                        icon: { source: Icon.XMarkCircle, tintColor: "red" },
+                        title: "Delete Project?",
+                        message: "This operation is permanent and cannot be undone.",
+                        primaryAction: {
+                          title: "Delete",
+                          style: Alert.ActionStyle.Destructive,
+                          async onAction() {
+                            const toast = await showToast(Toast.Style.Animated, "Deleting project");
+                            try {
+                              await requestJson(`/projects/${project.uuid}`, { baseUrl, token, method: "DELETE" });
+                              await revalidate();
+                              toast.style = Toast.Style.Success;
+                              toast.title = "Deleted";
+                            } catch (error) {
+                              toast.style = Toast.Style.Failure;
+                              toast.title = "Failed";
+                              toast.message = error instanceof Error ? error.message : String(error);
+                            }
+                          },
+                        },
+                      });
+                    }}
                   />
                 ) : null}
                 <ActionPanel.Section>

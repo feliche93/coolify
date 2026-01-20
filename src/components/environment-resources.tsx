@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { requestJson } from "../api/client";
 import { toId } from "../api/filters";
 import { Application, Database, ResourceType, Service, buildResources } from "../lib/resources";
+import EnvironmentVariablesList from "./environment-variables";
 import { buildConsoleLogsUrl, LogsSubmenu } from "./logs-actions";
 import { RedeploySubmenu } from "./redeploy-actions";
 import { ResourceDetails } from "./resource-details";
@@ -117,6 +118,7 @@ export default function EnvironmentResourcesList({
                 applicationUuid: item.uuid,
               })
             : undefined;
+        const canViewEnvVars = item.type === "application" || item.type === "service";
         const accessories = [
           {
             tag: {
@@ -158,6 +160,23 @@ export default function EnvironmentResourcesList({
                 {item.url ? <Action.OpenInBrowser title="Open Application" url={item.url} icon={Icon.Link} /> : null}
                 <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
                 <ActionPanel.Section>
+                  {canViewEnvVars && item.uuid ? (
+                    <Action.Push
+                      title="View Environment Variables"
+                      icon={Icon.Terminal}
+                      target={
+                        <EnvironmentVariablesList
+                          baseUrl={baseUrl}
+                          token={token}
+                          resource={{
+                            type: item.type === "service" ? "service" : "application",
+                            uuid: String(item.uuid),
+                            name: item.name,
+                          }}
+                        />
+                      }
+                    />
+                  ) : null}
                   {item.type === "application" && item.uuid ? (
                     <LogsSubmenu
                       baseUrl={baseUrl}

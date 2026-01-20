@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Icon, List, getPreferenceValues } from "@raycast/api";
+import { Action, ActionPanel, Color, Icon, List, Toast, getPreferenceValues, showToast } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { Preferences, fetchProjectEnvironments, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
@@ -10,9 +10,11 @@ import {
   buildEnvToProjectMap,
   toId,
 } from "./api/filters";
+import EnvironmentVariablesList from "./components/environment-variables";
 import { buildConsoleLogsUrl, LogsSubmenu } from "./components/logs-actions";
 import { ResourceDetails } from "./components/resource-details";
 import { RedeploySubmenu } from "./components/redeploy-actions";
+import DeleteResourceForm from "./components/delete-resource";
 import { Application, Database, ResourceItem, ResourceType, Service, buildResources } from "./lib/resources";
 import WithValidToken from "./pages/with-valid-token";
 
@@ -198,6 +200,7 @@ function ResourcesList() {
                     applicationUuid: item.uuid,
                   })
                 : undefined;
+            const canViewEnvVars = item.type === "application" || item.type === "service";
 
             const accessories = [
               envName
@@ -252,6 +255,23 @@ function ResourcesList() {
                     ) : null}
                     <Action.OpenInBrowser title="Open Environment in Coolify" url={environmentUrl} icon={Icon.Globe} />
                     <ActionPanel.Section>
+                      {canViewEnvVars && item.uuid ? (
+                        <Action.Push
+                          title="View Environment Variables"
+                          icon={Icon.Terminal}
+                          target={
+                            <EnvironmentVariablesList
+                              baseUrl={baseUrl}
+                              token={token}
+                              resource={{
+                                type: item.type === "service" ? "service" : "application",
+                                uuid: String(item.uuid),
+                                name: item.name,
+                              }}
+                            />
+                          }
+                        />
+                      ) : null}
                       {item.type === "application" && item.uuid ? (
                         <LogsSubmenu
                           baseUrl={baseUrl}
@@ -262,6 +282,80 @@ function ResourcesList() {
                       ) : null}
                       {item.uuid ? <RedeploySubmenu baseUrl={baseUrl} token={token} uuid={String(item.uuid)} /> : null}
                     </ActionPanel.Section>
+                    {item.uuid ? (
+                      <ActionPanel.Section title="Lifecycle">
+                        <Action
+                          icon={{ source: Icon.Play, tintColor: Color.Green }}
+                          title="Start"
+                          onAction={async () => {
+                            try {
+                              await requestJson(`/${resourceTypeEndpoint(item.type)}s/${item.uuid}/start`, {
+                                baseUrl,
+                                token,
+                              });
+                              await showToast({ style: Toast.Style.Success, title: "Start triggered" });
+                            } catch (error) {
+                              await showToast({
+                                style: Toast.Style.Failure,
+                                title: "Failed to start",
+                                message: error instanceof Error ? error.message : String(error),
+                              });
+                            }
+                          }}
+                        />
+                        <Action
+                          icon={{ source: Icon.Stop, tintColor: Color.Red }}
+                          title="Stop"
+                          onAction={async () => {
+                            try {
+                              await requestJson(`/${resourceTypeEndpoint(item.type)}s/${item.uuid}/stop`, {
+                                baseUrl,
+                                token,
+                              });
+                              await showToast({ style: Toast.Style.Success, title: "Stop triggered" });
+                            } catch (error) {
+                              await showToast({
+                                style: Toast.Style.Failure,
+                                title: "Failed to stop",
+                                message: error instanceof Error ? error.message : String(error),
+                              });
+                            }
+                          }}
+                        />
+                        <Action
+                          icon={{ source: Icon.Redo, tintColor: Color.Orange }}
+                          title="Restart"
+                          onAction={async () => {
+                            try {
+                              await requestJson(`/${resourceTypeEndpoint(item.type)}s/${item.uuid}/restart`, {
+                                baseUrl,
+                                token,
+                              });
+                              await showToast({ style: Toast.Style.Success, title: "Restart triggered" });
+                            } catch (error) {
+                              await showToast({
+                                style: Toast.Style.Failure,
+                                title: "Failed to restart",
+                                message: error instanceof Error ? error.message : String(error),
+                              });
+                            }
+                          }}
+                        />
+                        <Action.Push
+                          icon={{ source: Icon.Trash, tintColor: Color.Red }}
+                          title="Delete"
+                          target={
+                            <DeleteResourceForm
+                              baseUrl={baseUrl}
+                              token={token}
+                              resourceType={resourceTypeEndpoint(item.type)}
+                              uuid={String(item.uuid)}
+                            />
+                          }
+                          style={Action.Style.Destructive}
+                        />
+                      </ActionPanel.Section>
+                    ) : null}
                     <ActionPanel.Section>
                       <Action.CopyToClipboard title="Copy Name" content={item.name} />
                       {item.url ? <Action.CopyToClipboard title="Copy URL" content={item.url} /> : null}
@@ -361,6 +455,19 @@ function typeColor(type: ResourceType) {
       return "green";
     default:
       return "gray";
+  }
+}
+
+function resourceTypeEndpoint(type: ResourceType) {
+  switch (type) {
+    case "application":
+      return "application";
+    case "service":
+      return "service";
+    case "database":
+      return "database";
+    default:
+      return "application";
   }
 }
 
