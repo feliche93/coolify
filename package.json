@@ -1,8 +1,8 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
-  "name": "coolify",
-  "title": "Coolify",
-  "description": "Coolify Management via Raycast",
+  "name": "coolify-ops",
+  "title": "Coolify Ops",
+  "description": "Operational control for Coolify: deployments, resources, servers, envs",
   "icon": "coolify-logo.png",
   "author": "feliche93",
   "platforms": [

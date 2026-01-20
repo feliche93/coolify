@@ -2,7 +2,6 @@ import {
   Action,
   ActionPanel,
   Color,
-  Detail,
   Form,
   Icon,
   Keyboard,
@@ -16,6 +15,7 @@ import { FormValidation, useForm } from "@raycast/utils";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { Preferences, getInstanceUrl, normalizeBaseUrl, requestJson } from "./api/client";
+import JsonDetail from "./components/json-detail";
 import WithValidToken from "./pages/with-valid-token";
 
 type Server = {
@@ -27,19 +27,6 @@ type Server = {
   is_usable?: boolean;
   user?: string;
   port?: string;
-};
-
-type ServerDetails = {
-  uuid?: string;
-  name?: string;
-  description?: string;
-  ip?: string;
-  port?: number;
-  user?: string;
-  proxy?: Record<string, unknown>;
-  settings?: Record<string, unknown>;
-  created_at?: string;
-  updated_at?: string;
 };
 
 type PrivateKey = {
@@ -84,17 +71,8 @@ function resourceStatusColor(status?: string) {
 }
 
 function ServerDetailsView({ baseUrl, token, server }: { baseUrl: string; token: string; server: Server }) {
-  const { isLoading, data } = useCachedPromise(
-    async () => requestJson<ServerDetails>(`/servers/${server.uuid}`, { baseUrl, token }),
-    [server.uuid],
-    { keepPreviousData: true },
-  );
-
   return (
-    <Detail
-      isLoading={isLoading}
-      markdown={`# ${server.name ?? "Server"}\n\n\`\`\`json\n${JSON.stringify(data ?? {}, null, 2)}\n\`\`\``}
-    />
+    <JsonDetail title={server.name ?? "Server"} baseUrl={baseUrl} token={token} path={`/servers/${server.uuid}`} />
   );
 }
 

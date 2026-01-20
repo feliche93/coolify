@@ -50,20 +50,16 @@ type Application = {
   environment_uuid?: string;
 };
 
-const ACTIVE_STATUSES = new Set([
-  "running",
-  "queued",
-  "pending",
-  "in_progress",
-  "in-progress",
-  "deploying",
-  "building",
-]);
+const ACTIVE_STATUSES = new Set(["running", "queued", "pending", "in_progress", "deploying", "building"]);
+
+function normalizeStatus(status?: string) {
+  return (status ?? "").toLowerCase().replace(/\s+/g, "_").replace(/-+/g, "_");
+}
 
 function statusIcon(status?: string) {
-  const value = (status ?? "").toLowerCase();
+  const value = normalizeStatus(status);
   if (value === "running") return { source: Icon.Dot, tintColor: Color.Green };
-  if (value === "in_progress" || value === "in-progress" || value === "deploying" || value === "building") {
+  if (value === "in_progress" || value === "deploying" || value === "building") {
     return { source: Icon.Dot, tintColor: Color.Blue };
   }
   if (value === "queued" || value === "pending") return { source: Icon.Dot, tintColor: Color.Yellow };
@@ -75,6 +71,21 @@ function statusIcon(status?: string) {
 function formatStatus(status?: string) {
   if (!status) return "unknown";
   return status.replace(/[_-]/g, " ").replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function normalizeList<T>(response: unknown): T[] {
+  if (Array.isArray(response)) return response as T[];
+  if (!response || typeof response !== "object") return [];
+  const record = response as Record<string, unknown>;
+  if (Array.isArray(record.rows)) return record.rows as T[];
+  if (Array.isArray(record.data)) return record.data as T[];
+  if (Array.isArray(record.deployments)) return record.deployments as T[];
+  if (record.data && typeof record.data === "object") {
+    const nested = record.data as Record<string, unknown>;
+    if (Array.isArray(nested.rows)) return nested.rows as T[];
+    if (Array.isArray(nested.data)) return nested.data as T[];
+  }
+  return [];
 }
 
 function normalizeUrl(url?: string) {
@@ -185,7 +196,7 @@ function applyFilter(
 ): Deployment[] {
   if (filterValue === "all") return items;
   if (filterValue === "status:active") {
-    return items.filter((item) => ACTIVE_STATUSES.has((item.status ?? "").toLowerCase()));
+    return items.filter((item) => ACTIVE_STATUSES.has(normalizeStatus(item.status)));
   }
   if (filterValue.startsWith("project:")) {
     const projectId = filterValue.replace("project:", "");
@@ -218,7 +229,10 @@ function DeploymentsList() {
   const abortable = useRef<AbortController | null>(null);
 
   const { data: projects, isLoading: isLoadingProjects } = useCachedPromise(
-    async () => requestJson<Project[]>("/projects", { baseUrl, token }),
+    async () => {
+      const response = await requestJson<unknown>("/projects", { baseUrl, token });
+      return normalizeList<Project>(response);
+    },
     [],
     { keepPreviousData: true },
   );
@@ -235,7 +249,10 @@ function DeploymentsList() {
   const envNameToIds = useMemo(() => buildEnvNameToIdsMap(environments ?? []), [environments]);
 
   const { data: applications, isLoading: isLoadingApplications } = useCachedPromise(
-    async () => requestJson<Application[]>("/applications", { baseUrl, token }),
+    async () => {
+      const response = await requestJson<unknown>("/applications", { baseUrl, token });
+      return normalizeList<Application>(response);
+    },
     [],
     { keepPreviousData: true },
   );
@@ -299,21 +316,31 @@ function DeploymentsList() {
   } = useCachedPromise(
     async () => {
       const appUuids = filteredAppUuids;
-      if (!appUuids.length) return [] as Deployment[];
+      if (!appUuids.length) {
+        const rows = await requestJson<unknown>(`/deployments`, { baseUrl, token, signal: abortable.current?.signal });
+        return normalizeList<Deployment>(rows).slice(0, 200);
+      }
 
       const all: Deployment[] = [];
       const batchSize = 1;
       for (let i = 0; i < appUuids.length; i += batchSize) {
         const uuid = appUuids[i];
-        const rows = await requestJson<Deployment[] | { data?: Deployment[]; deployments?: Deployment[] }>(
-          `/deployments/applications/${uuid}?take=5`,
-          { baseUrl, token, signal: abortable.current?.signal },
-        );
-        const list = Array.isArray(rows) ? rows : (rows?.deployments ?? rows?.data ?? []);
+        const rows = await requestJson<unknown>(`/deployments/applications/${uuid}?take=5`, {
+          baseUrl,
+          token,
+          signal: abortable.current?.signal,
+        });
+        const list = normalizeList<Deployment>(rows);
         all.push(...list.map((row) => ({ ...row, source_app_uuid: uuid })));
         if (all.length >= 200) break;
       }
-      return all;
+      if (all.length > 0) return all;
+      const fallback = await requestJson<unknown>(`/deployments`, {
+        baseUrl,
+        token,
+        signal: abortable.current?.signal,
+      });
+      return normalizeList<Deployment>(fallback).slice(0, 200);
     },
     [filteredAppUuids.join("|")],
     { keepPreviousData: true, abortable },
@@ -410,7 +437,7 @@ function DeploymentsList() {
         const branch = appInfo?.git_branch ?? "";
         const createdAt = deployment.created_at ? new Date(deployment.created_at).getTime() : undefined;
         const projectName = envInfo?.projectName ?? "";
-        const canCancel = Boolean(deployment.deployment_uuid) && ACTIVE_STATUSES.has(status.toLowerCase());
+        const canCancel = Boolean(deployment.deployment_uuid) && ACTIVE_STATUSES.has(normalizeStatus(status));
         const accessories = [
           projectName ? { text: projectName } : null,
           branch
@@ -660,6 +687,23 @@ function DeploymentDetails({
               consoleLogsUrl={consoleLogsUrl}
             />
           ) : null}
+          <ActionPanel.Section>
+            {appName ? <Action.CopyToClipboard title="Copy App Name" content={appName} /> : null}
+            {environmentName ? <Action.CopyToClipboard title="Copy Environment" content={environmentName} /> : null}
+            {branch ? <Action.CopyToClipboard title="Copy Git Branch" content={branch} /> : null}
+            {deployment.commit_message ? (
+              <Action.CopyToClipboard title="Copy Commit Message" content={deployment.commit_message} />
+            ) : null}
+            {deployment.commit ? <Action.CopyToClipboard title="Copy Commit SHA" content={deployment.commit} /> : null}
+            {deployment.server_name ? (
+              <Action.CopyToClipboard title="Copy Server Name" content={deployment.server_name} />
+            ) : null}
+            {deployment.pull_request_id ? (
+              <Action.CopyToClipboard title="Copy Pull Request ID" content={String(deployment.pull_request_id)} />
+            ) : null}
+            {isHttpUrl(deployUrl) ? <Action.CopyToClipboard title="Copy Deploy URL" content={deployUrl!} /> : null}
+            {isHttpUrl(coolifyUrl) ? <Action.CopyToClipboard title="Copy Coolify URL" content={coolifyUrl!} /> : null}
+          </ActionPanel.Section>
         </ActionPanel>
       }
     />

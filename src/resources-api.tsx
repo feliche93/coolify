@@ -1,6 +1,6 @@
-import { Detail, getPreferenceValues } from "@raycast/api";
-import { useCachedPromise } from "@raycast/utils";
-import { Preferences, normalizeBaseUrl, requestJson } from "./api/client";
+import { getPreferenceValues } from "@raycast/api";
+import { Preferences, normalizeBaseUrl } from "./api/client";
+import JsonDetail from "./components/json-detail";
 import WithValidToken from "./pages/with-valid-token";
 
 function ResourcesApiView() {
@@ -8,16 +8,7 @@ function ResourcesApiView() {
   const baseUrl = normalizeBaseUrl(apiUrl ?? "");
   const token = apiToken?.trim() ?? "";
 
-  const { data, isLoading } = useCachedPromise(async () => requestJson<unknown>("/resources", { baseUrl, token }), [], {
-    keepPreviousData: true,
-  });
-
-  return (
-    <Detail
-      isLoading={isLoading}
-      markdown={`# Resources (API)\n\n\`\`\`json\n${JSON.stringify(data ?? {}, null, 2)}\n\`\`\``}
-    />
-  );
+  return <JsonDetail title="Resources (API)" baseUrl={baseUrl} token={token} path="/resources" />;
 }
 
 export default function Command() {

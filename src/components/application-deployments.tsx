@@ -18,8 +18,23 @@ type Deployment = {
   created_at?: string;
 };
 
+function normalizeList<T>(response: unknown): T[] {
+  if (Array.isArray(response)) return response as T[];
+  if (!response || typeof response !== "object") return [];
+  const record = response as Record<string, unknown>;
+  if (Array.isArray(record.rows)) return record.rows as T[];
+  if (Array.isArray(record.data)) return record.data as T[];
+  if (Array.isArray(record.deployments)) return record.deployments as T[];
+  if (record.data && typeof record.data === "object") {
+    const nested = record.data as Record<string, unknown>;
+    if (Array.isArray(nested.rows)) return nested.rows as T[];
+    if (Array.isArray(nested.data)) return nested.data as T[];
+  }
+  return [];
+}
+
 function statusColor(status?: string) {
-  const value = status?.toLowerCase() ?? "";
+  const value = (status ?? "").toLowerCase().replace(/\s+/g, "_").replace(/-+/g, "_");
   if (!value) return Color.SecondaryText;
   if (value.includes("fail") || value.includes("error")) return Color.Red;
   if (value.includes("running") || value.includes("in_progress") || value.includes("build")) return Color.Blue;
@@ -45,16 +60,24 @@ export default function ApplicationDeploymentsList({
   instanceUrl: string;
 }) {
   const { data: deployments = [], isLoading } = useCachedPromise(
-    async () => requestJson<Deployment[]>(`/deployments/applications/${applicationUuid}`, { baseUrl, token }),
+    async () => {
+      const response = await requestJson<unknown>(`/deployments/applications/${applicationUuid}`, {
+        baseUrl,
+        token,
+      });
+      return normalizeList<Deployment>(response);
+    },
     [applicationUuid],
     { keepPreviousData: true },
   );
+  const list = normalizeList<Deployment>(deployments);
 
   return (
     <List isLoading={isLoading} searchBarPlaceholder="Search deployments...">
-      <List.Section title={`${applicationName} / Deployments`} subtitle={`${deployments.length} deployments`}>
-        {deployments.map((deployment) => {
-          const createdAt = deployment.created_at;
+      <List.Section title={`${applicationName} / Deployments`} subtitle={`${list.length} deployments`}>
+        {list.map((deployment) => {
+          const createdAtRaw = deployment.created_at ? new Date(deployment.created_at).getTime() : undefined;
+          const createdAt = createdAtRaw && Number.isFinite(createdAtRaw) ? createdAtRaw : undefined;
           const deployUrl = deployment.deployment_url ? normalizeUrl(deployment.deployment_url) : undefined;
           return (
             <List.Item
@@ -95,7 +118,7 @@ export default function ApplicationDeploymentsList({
           );
         })}
       </List.Section>
-      {!isLoading && deployments.length === 0 ? (
+      {!isLoading && list.length === 0 ? (
         <List.EmptyView
           icon={Icon.MagnifyingGlass}
           title="No deployments found"

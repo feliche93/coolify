@@ -1,4 +1,4 @@
-import { Detail } from "@raycast/api";
+import { Action, ActionPanel, Clipboard, Detail, Icon, Toast, showToast } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { requestJson } from "../api/client";
 
@@ -19,7 +19,25 @@ export default function JsonDetail({
     { keepPreviousData: true },
   );
 
-  const markdown = `# ${title}\n\n\`\`\`json\n${JSON.stringify(data ?? {}, null, 2)}\n\`\`\``;
+  const json = JSON.stringify(data ?? {}, null, 2);
+  const markdown = `# ${title}\n\n\`\`\`json\n${json}\n\`\`\``;
 
-  return <Detail isLoading={isLoading} markdown={markdown} />;
+  return (
+    <Detail
+      isLoading={isLoading}
+      markdown={markdown}
+      actions={
+        <ActionPanel>
+          <Action
+            icon={Icon.CopyClipboard}
+            title="Copy JSON"
+            onAction={async () => {
+              await Clipboard.copy(json);
+              await showToast({ style: Toast.Style.Success, title: "Copied JSON" });
+            }}
+          />
+        </ActionPanel>
+      }
+    />
+  );
 }
